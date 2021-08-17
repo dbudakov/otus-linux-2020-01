@@ -1,0 +1,105 @@
+---
+- hosts: all
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: install packages
+      yum: name=bind,bind-utils,ntp state=present
+
+    - name: sntp
+      shell: ntpdate -u ntp1.stratum2.ru
+      ignore_errors: yes
+
+    - name: copy transferkey to all servers and the client
+      copy: src=named.zonetransfer.key dest=/etc/named.zonetransfer.key owner=root group=named mode=0644
+
+- hosts: ns01
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: copy named.conf
+      copy: src=master-named.conf dest=/etc/named.conf owner=root group=named mode=0640
+
+    - name: dir for zones
+      file: path=/var/named/zones state=directory owner=named group=named seuser=system_u
+    - name: copy zones
+      copy: src={{ item }} dest=/var/named/zones/ owner=root group=named mode=0660
+      with_fileglob:
+        - named.*
+    - name: Enable named_write_master_zones
+      shell: setsebool -P named_write_master_zones 1
+
+    - name: copy resolv.conf to the servers
+      copy: src=servers-resolv.conf dest=/etc/resolv.conf owner=root group=root mode=0644 attributes=+i
+
+    - name: set /etc/named permissions
+      file: path=/etc/named owner=root group=named mode=0670
+
+    - name: ensure named is running and enabled
+      service: name=named state=restarted enabled=yes
+
+- hosts: ns02
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: copy named.conf
+      copy: src=slave-named.conf dest=/etc/named.conf owner=root group=named mode=0640
+    - name: copy resolv.conf to the servers
+      copy: src=servers-resolv.conf dest=/etc/resolv.conf owner=root group=root mode=0644 attributes=+i
+
+    - name: set /etc/named permissions
+      file: path=/etc/named owner=root group=named mode=0670
+
+    - name: dir for zones
+      file: path=/var/named/zones state=directory owner=named group=named
+
+    - name: ensure named is running and enabled
+      service: name=named state=restarted enabled=yes
+
+- hosts: client1
+  become: yes
+  tasks:
+    - name: copy resolv.conf to the client
+      copy: src=client-resolv.conf dest=/etc/resolv.conf owner=root group=root mode=0644 attributes=+i
+    - name: copy rndc conf file
+      copy: src=rndc.conf dest=/home/vagrant/rndc.conf owner=vagrant group=vagrant mode=0644
+    - name: copy motd to the client
+      copy: src=client-motd dest=/etc/motd owner=root group=root mode=0644
+    - name:
+      shell: |
+        nsupdate -k /etc/named.zonetransfer.key<<EOF
+        server 192.168.50.10
+        zone dns.lab
+        update add web1.dns.lab. 60 A 192.168.50.15
+        send
+        EOF
+
+        nsupdate -k /etc/named.zonetransfer.key<<EOF
+        server 192.168.50.10
+        zone newdns.lab
+        update add www.newdns.lab. 60 A 192.168.50.15
+        update add www.newdns.lab. 60 A 192.168.50.16
+        send
+        EOF
+
+- hosts: client2
+  become: yes
+  tasks:
+    - name: copy resolv.conf to the client
+      copy: src=client-resolv.conf dest=/etc/resolv.conf owner=root group=root mode=0644 attributes=+i
+    - name: copy rndc conf file
+      copy: src=rndc.conf dest=/home/vagrant/rndc.conf owner=vagrant group=vagrant mode=0644
+    - name: copy motd to the client
+      copy: src=client-motd dest=/etc/motd owner=root group=root mode=0644
+    - name:
+      shell: |
+        nsupdate -k /etc/named.zonetransfer.key<<EOF
+        server 192.168.50.10
+        zone dns.lab
+        update add web1.dns.lab. 60 A 192.168.50.15
+        send
+        server 192.168.50.10
+        zone dns.lab
+        update add web2.dns.lab. 60 A 192.168.50.16
+        send
+        EOF

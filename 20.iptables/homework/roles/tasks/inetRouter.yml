@@ -1,0 +1,18 @@
+---
+- name: "##### eth1 inetRouter --> centralRouter #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth1_cntr
+    dest: "{{ eth_01 }}"
+  notify: restart router
+
+- name: "##### route 192.168.0.0/16 via 192.168.255.2 #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/route-eth1
+    dest: "{{ route_eth1 }}"
+  notify: restart router
+
+- name: "##### set forwarding - true #####"
+  sysctl:
+    name: "{{ sysctl_name }}"
+    value: "1"
+    sysctl_set: yes

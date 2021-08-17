@@ -1,0 +1,8 @@
+## сеть между centralRouter и office2Router
+DEVICE=eth3
+BOOTPROTO=none
+ONBOOT=yes
+NETMASK=255.255.255.252
+IPADDR=192.168.6.1
+USERCTL=no
+GATEWAY=192.168.6.2

@@ -1,0 +1,10 @@
+- name: "deploy homework"
+  hosts:
+    - server
+    - client
+  gather_facts: false
+  become: true
+  roles:
+    - role: roles
+  tasks:
+    - include: ../roles/tasks/{{ inventory_hostname }}.yml

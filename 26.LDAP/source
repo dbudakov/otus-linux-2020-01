@@ -1,0 +1,5 @@
+[freeipa ansible](https://github.com/freeipa/ansible-freeipa/tree/master/roles/ipaserver)
+[ipa-host](https://docs.ansible.com/ansible/latest/modules/ipa_host_module.html)
+[ipa-user](https://docs.ansible.com/ansible/latest/modules/ipa_user_module.html)
+[DEPLOYMENT CONSIDERATIONS FOR REPLICAS](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/linux_domain_identity_authentication_and_policy_guide/replica-considerations#replica-topology-recommendations)
+[https://www.dmosk.ru/miniinstruktions.php?mini=freeipa-centos](https://www.dmosk.ru/miniinstruktions.php?mini=freeipa-centos)

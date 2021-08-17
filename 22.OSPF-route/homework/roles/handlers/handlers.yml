@@ -1,0 +1,26 @@
+- name: start zebra
+  systemd:
+    name: zebra.service
+    state: started
+    enabled: yes
+
+- name: start ospfd
+  systemd:
+    name: ospfd
+    state: restarted
+    enabled: yes
+
+- name: restart network
+  systemd:
+    name: network
+    state: restarted
+
+- name: restart zebra
+  systemd:
+    name: zebra.service
+    state: restarted
+
+- name: restart ospfd
+  systemd:
+    name: ospfd
+    state: restarted

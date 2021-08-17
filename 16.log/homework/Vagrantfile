@@ -1,0 +1,123 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+Vagrant.configure("2") do |config|
+
+           config.vm.define "web" do |web|
+                web.vm.box = "centos/7"
+                web.vm.host_name = "web"
+                web.vm.network "private_network", ip: '192.168.11.101'
+                web.vm.provider :virtualbox do |vb|
+                vb.customize ["modifyvm", :id, "--memory", "256"]
+                end
+                web.vm.provision "shell", inline: <<SHELL
+                yum install -y epel-release
+                yum install -y  nginx
+                cat > web_0 <<WEB
+#LOCAL
+#*.notice       /var/log/LOCAL/notice
+#*.warn         /var/log/LOCAL/warn
+*.err           /var/log/LOCAL/err
+*.crit          /var/log/LOCAL/crit
+*.alert         /var/log/LOCAL/alert
+
+#REMOTE
+#*.*    
+auth.*          @@192.168.11.102:514
+authpriv.*      @@192.168.11.102:514
+cron.*          @@192.168.11.102:514
+daemon.*        @@192.168.11.102:514
+kern.*          @@192.168.11.102:514
+#lpr.*
+#mail.*
+#mark.*
+#news.*         
+#security.*
+syslog.*        @@192.168.11.102:514
+user.*          @@192.168.11.102:514
+#uucp.* 
+local6.*        @@192.168.11.102:514
+local7.*        @@192.168.11.102:514
+
+WEB
+                sed -i ''$(awk '/@@remote-host:514/ {print NR}' /etc/rsyslog.conf)'r web_0'  /etc/rsyslog.conf
+                systemctl restart rsyslog
+                sed -i 's!/var/log/nginx/access.log!syslog:server=192.168.11.102:514,facility=local6,tag=nginx_access,severity=info!' /etc/nginx/nginx.conf
+                cat > web_1 <<WEB
+error_log syslog:server=192.168.11.102:514,facility=local6,tag=nginx_error;
+WEB
+                sed -i ''$(awk '/error_log/ {print NR}' /etc/nginx/nginx.conf)'r web_1'  /etc/nginx/nginx.conf
+                systemctl enable nginx  
+                systemctl start nginx 
+                cat >> /etc/audit/rules.d/audit.rules <<AUDIT
+
+# audit nginx.conf
+-w /etc/nginx/nginx.conf -p wa
+
+AUDIT
+                yum install  -y audispd-plugins.x86_64
+                sed -i 's!active = no!active = yes!' /etc/audisp/plugins.d/au-remote.conf
+                sed -i 's!remote_server =!remote_server = 192.168.11.102!' /etc/audisp/audisp-remote.conf
+                sed -i 's!write_logs = yes!write_logs = no!' /etc/audit/auditd.conf
+                systemctl daemon-reload
+                service auditd restart          
+SHELL
+           end
+           config.vm.define "log" do |log|
+                log.vm.box = "centos/7"
+                log.vm.host_name = "log"
+                log.vm.network "private_network", ip: '192.168.11.102'
+                log.vm.provider :virtualbox do |vb|
+                        vb.customize ["modifyvm", :id, "--memory", "256"]
+                end
+                log.vm.provision "shell", inline: <<SHELL
+                sed -i 's/#\$ModLoad imudp/$ModLoad imudp/' /etc/rsyslog.conf
+                sed -i 's/#\$UDPServerRun/$UDPServerRun/' /etc/rsyslog.conf
+                sed -i 's/#\$ModLoad imtcp/$ModLoad imtcp/' /etc/rsyslog.conf
+                sed -i 's/#\$InputTCPServerRun/$InputTCPServerRun/' /etc/rsyslog.conf
+                cat > log_0 <<LOG
+
+if \\$syslogfacility-text == 'local6' and \\$programname == 'nginx_access' then /var/log/web/nginx/access.log
+& ~
+
+if \\$syslogfacility-text == 'local6' and \\$programname == 'nginx_error' then /var/log/web/nginx/error.log
+& ~
+
+\\$template RemoteLogs,"/var/log/%HOSTNAME%/%PROGRAMNAME%.log"
+*.* ?RemoteLogs
+& ~
+LOG
+                sed -i ''$(awk '/InputTCPServerRun/ {print NR}' /etc/rsyslog.conf)'r log_0'  /etc/rsyslog.conf
+                sudo systemctl restart rsyslog
+                sed -i 's!##tcp_listen_port = 60!tcp_listen_port = 60!' /etc/audit/auditd.conf
+                service auditd restart          
+                cat >/etc/logrotate.d/web.log <<LOGR
+/var/log/audit/*log
+{
+daily
+rotate 3
+size 250M
+missingok
+notifempty
+compress
+postrotate
+        pkill -HUP rsyslog
+endscript
+}
+LOGR
+                cat >/etc/logrotate.d/audit.log <<LOGR
+/var/log/audit/*log
+{
+daily
+rotate 3
+size 250M
+missingok
+notifempty
+compress
+postrotate
+        service auditd restart
+endscript
+}
+LOGR
+SHELL
+           end
+end

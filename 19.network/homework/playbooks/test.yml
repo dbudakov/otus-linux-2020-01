@@ -1,0 +1,31 @@
+- name: "deploy Router"
+  hosts:
+    - inetRouter
+    - centralRouter
+    - office1Router
+    - office2Router
+  gather_facts: false
+  become: true
+  roles:
+    - role: roles
+  tasks:
+    - include: ../roles/tasks/{{ inventory_hostname }}.yml
+    - include: ../roles/tasks/{{ inventory_hostname }}_var.yml
+    - include: ../roles/tasks/restart_network.yml
+  handlers:
+    - include: ../roles/handlers/restart_router.yml
+    - include: ../roles/handlers/restart_iptables.yml
+
+- name: "deploy Server"
+  hosts:
+    - centralServer
+    - office1Server
+    - office2Server
+  gather_facts: false
+  become: true
+  roles:
+    - role: roles
+  tasks:
+    - include: ../roles/tasks/all_servers.yml
+  handlers:
+    - include: ../roles/handlers/restart_router.yml

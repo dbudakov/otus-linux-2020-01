@@ -1,0 +1,26 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+ config.vm.box = "centos/7"
+ 
+ config.vm.define "server" do |server|
+    server.vm.hostname = "server.loc"
+    server.vm.network "private_network", ip: "192.168.10.10"
+    server.vm.provider "virtualbox" do |vb|
+        vb.name = "server"
+    end
+ end
+ 
+ config.vm.provider "virtualbox" do |vb|
+	vb.customize ["modifyvm", :id, "--nic2", "hostonly"]
+        vb.customize ["modifyvm", :id, "--hostonlyadapter2", "vboxnet0"]	
+	vb.memory = 256
+ end
+ 
+ config.vm.provision "ansible" do |ansible|
+            #ansible.verbose = "vv"
+            ansible.playbook = "playbooks/ocserver.yml"
+            ansible.become = "true"
+ end
+end

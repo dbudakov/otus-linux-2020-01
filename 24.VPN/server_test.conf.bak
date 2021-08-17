@@ -1,0 +1,34 @@
+server_test.conf.bak
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/1.1.1.1.crt
+key /etc/openvpn/1.1.1.1.key
+dh /etc.openvpn/dh.pem
+proto tcp-server
+tls-server
+port 1194
+dev tun0
+server 100.64.30.0 255.255.255.240
+ifconfig-pool-persist ipp.txt
+push "route 100.64.30.0 255.255.255.240"
+push "redirect-gareway"
+push "dhcp-option DNS 100.64.30.1"
+
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/89.40.117.114.crt
+key /etc/openvpn/89.40.117.114.key
+dh /etc/openvpn/dh.pem
+proto tcp-server
+tls-server
+
+persist-tun
+persist-local-ip
+persist-remote-ip
+persist-key
+
+comp-lzo
+
+client-to-client.
+client-config-dir ccd.
+
+log-append /var/log/openvpn/openvpn.log
+verb 3

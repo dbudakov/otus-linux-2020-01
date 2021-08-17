@@ -1,0 +1,8 @@
+## сеть между office1Router и centralRouter
+DEVICE=eth1
+BOOTPROTO=none
+ONBOOT=yes
+NETMASK=255.255.255.253
+IPADDR=192.168.5.2
+USERCTL=no
+GATEWAY=192.168.5.1

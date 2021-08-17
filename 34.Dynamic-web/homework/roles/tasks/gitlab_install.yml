@@ -1,0 +1,82 @@
+- name: Install epel-repo
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install packages
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - setools
+    - setroubleshoot-server
+    - nginx
+    - curl
+    - policycoreutils
+    - postfix
+
+- name: Isert custom index.html
+  template:
+    src: ../roles/templates/nginx/index.html
+    dest: /usr/share/nginx/html/index.html
+- name: Install gitlab
+  shell: |
+    curl -s https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash
+    yum install gitlab-ce -y
+
+- name: Configure gitlab.rb
+  shell: |
+    sed -i 's!# nginx\['\''enable'\''\] = true!nginx\['\''enable'\''\] = false!' /etc/gitlab/gitlab.rb
+    sed -i 's!# gitlab_rails\['\''trusted_proxies'\''\] = \[\]!gitlab_rails\['\''trusted_proxies'\''\] = \[ '\''127.0.0.1'\'' ]!' /etc/gitlab/gitlab.rb
+    sed -i 's!# gitlab_workhorse\['\''listen_network'\''\] = "unix"!gitlab_workhorse\['\''listen_network'\''\] = "tcp"!' /etc/gitlab/gitlab.rb
+    sed -i 's!# gitlab_workhorse\['\''listen_addr'\''\] = "/var/opt/gitlab/gitlab-workhorse/socket"!gitlab_workhorse\['\''listen_addr'\''\] = "127.0.0.1:8181"!' /etc/gitlab/gitlab.rb
+    sed -i 's/        listen       80 default_server;/        listen       80;/' /etc/nginx/nginx.conf
+    sed -i 's!        listen       \[::\]:80 default_server;!        listen       \[::\]:80;!' /etc/nginx/nginx.conf
+
+- name: Gitlab reconfigure and start
+  shell: |
+    gitlab-ctl reconfigure
+    gitlab-ctl start
+
+- name: Create site_gitlab.conf
+  shell: |
+    cat<<EOF>/etc/nginx/conf.d/site_gitlab.conf
+    server {
+        listen 81;
+        listen [::]:81;
+        server_name gitlab.example.com;
+        server_tokens off;
+        root /opt/gitlab/embedded/service/gitlab-rails/public;
+
+        location / {
+            client_max_body_size 0;
+            gzip off;
+            proxy_read_timeout      300;
+            proxy_connect_timeout   300;
+            proxy_redirect          off;
+            proxy_http_version 1.1;
+            proxy_set_header    Host                \$http_host;
+            proxy_set_header    X-Real-IP           \$remote_addr;
+            proxy_set_header    X-Forwarded-For     \$proxy_add_x_forwarded_for;
+            proxy_set_header    X-Forwarded-Proto   \$scheme;
+            proxy_pass http://127.0.0.1:8181;
+        }
+    }
+    EOF
+
+- name: Prestart nginx for SELinux
+  shell: |
+    systemctl start nginx
+  ignore_errors: True
+
+- name: Configure SELinux
+  shell: |
+    sudo setsebool -P httpd_can_network_connect 1
+    ausearch -c 'nginx' --raw | audit2allow -M my-nginx
+    semodule -i my-nginx.pp
+    rm -f ./my-nginx.pp; > /var/log/audit/audit.log
+  ignore_errors: True
+
+- name: Start nginx service
+  shell: |
+    systemctl enable nginx; systemctl restart nginx

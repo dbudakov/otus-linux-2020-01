@@ -1,0 +1,8 @@
+
+## inetRouter2 --> centralRouter
+DEVICE=eth1
+BOOTPROTO=none
+ONBOOT=yes
+NETMASK=255.255.255.252
+IPADDR=192.168.155.1
+USERCTL=no

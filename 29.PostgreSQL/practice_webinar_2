@@ -1,0 +1,48 @@
+/var/lib/pgsql/data/pg_hba.conf
+    Описание базовой проверки при подключении
+
+ls /var/lib/pgsql/data/base
+1   12921   12926   16384 - номера OID'ов, внутри которых файлы соответствующие таблицам в этих базах
+
+psql
+select * from pg_class whete relname='test';
+\d+ pg_attribute
+select * from pg_attribute;
+
+pg_ctl --help
+pg_ctl status -D /var/lib/pgsql/data/ - статус по процессу
+
+pg_baunser
+pg_odisey
+
+
+postgres server process - является родителем всех процессов, связанных с кластером
+    - запуск при старте сервиса
+    - первый процесс postgres
+    - порождает все остальные процессы
+    - создает shared memory
+    - слушает TCP и Unix socket
+
+backend process - для каждого клиентского соединения порождается выделенный серверный процесс, который обрабатывает все запросы клиента
+    - запускается postmaster'ом
+    - обслуживает сессию
+    - работает пока сессия активна
+    - максимальное количество определяется параметром max_connections(по умолчанию 100)
+
+background processes - различные фоновые процессы, выполняемые для соответствующих функций
+    - запускаются postmaster'ом
+    - при старте сервиса
+    - выделенная роль у каждого процесса
+        logger process              - запись сообщений в лог файл
+        checkpointer process        - запись грязных страниц из buffer cache на диск при наступлении checkpoint
+        writer process              - проактивная запись грязных страниц из buffer cache на диск(кеш наоборот)
+        wal writer process          - запись wal buffer в wal file
+        autovacuum launcher process - занимается очисткой
+        archiver                    - архивация (и репликация) WAL
+        stats collector process     - сбор cтатистики использования по сессиям
+
+Архитектура памяти
+    Local memory - выделяется каждым backend процессом для собственных нужд
+    temp_buffers - используется для хранения временных таблиц;
+    work_mem - используется на этапе выполнения запроса для сортировок сортировок
+    maintenance_work_mem - используется служебными операциями типа VACUUM и REINDEX

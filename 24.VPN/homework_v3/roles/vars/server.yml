@@ -1,0 +1,15 @@
+---
+packages:
+  - ocserv
+
+packages1:
+  - gnutls-devel 
+  - libev-devel 
+  - tcp_wrappers-devel 
+  - pam-devel 
+  - lz4-devel 
+  - libseccomp-devel 
+  - readline-devel 
+  - libnl3-devel 
+  - krb5-devel 
+  - radcli-devel

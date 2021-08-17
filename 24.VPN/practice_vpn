@@ -1,0 +1,20 @@
+practice_vpn
+
+IPIP
+  1. Создаем IPIP-туннельный интерфейс:
+    ip tunnel add tun0 mode ipip remote 200.200.200.200 local
+    100.100.100.100 dev eth0
+  2. Добавляем IP-адрес на туннельный интерфейс:
+    ip address add 10.0.0.1 netmask 255.255.255.252 dev tun0
+  3. Устанавливаем MTU и поднимем интерфейс:
+    ifconfig tun0 mtu 1492 up
+
+GRE
+  1.Загружаем модуль ядра
+    modprobe ip_gre
+  2. Создаем GRE-интерфейс
+    ip tunnel add tun0 mode gre remote 200.200.200.200 local 100.100.100.100 dev eth0
+  3. Добавляем IP-адрес на туннельный интерфейс
+    ip address add 10.0.0.1/30 dev tun0
+  4. Устанавливаем MTU и поднимем интерфейс
+    ifconfig tun0 mtu 1492 up

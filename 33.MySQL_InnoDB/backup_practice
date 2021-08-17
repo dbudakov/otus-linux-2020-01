@@ -1,0 +1,90 @@
+#practice
+# mysqldump
+mysqldump astore > astore.sql - создание dump'a
+mysqldump bet -d > /root/bet_struct.dmp - создание только структуры пустых таблиц
+mysqldump bet -d -R - позволяет выкачивать хранимые процедуры(инфа в мета данных)
+mysql -e "create database astore1;" ; mysql astore1 < astore.sql - восстановление из dump'a
+!Думаю что можно сделать дамп таблиц пользователей для переноса в новую БД
+
+# xtrabackup
+Создание полного бекапа
+  xtracackup --backup --target-dir=/data/backups/base
+    more /data/backups/xtrabackup_info - информация по бекапу, для востановления по времени, должен быть включен binlog
+    more /data/backups/xtrabackup_checkpoints - фиксирует с какого lsn(logical sequence number, проверка консистентности) по какой содержится информация в этом бекапе
+
+Создание инкрементального бекапа(отправная точка ./base)
+  xtracackup --backup --target-dir=/data/backups/inc1 --incremental-basedir=/data/backups/base
+
+Создание дифференциального бекапа(отправная точка ./inc1)
+  xtracackup --backup --target-dir=/data/backups/inc2 --incremental-basedir=/data/backups/inc1
+
+Эмулирование записи в базу, для теска инкрементальных бекапов
+  sysbench --threads=10 --mysql-host=localhost --mysql-user=orus --mysql-password='NewOtus19#' --db-driver=mysql --mysql-db=otus /usr/share/sysbench/oltp_read_write.lua run
+
+
+Восстановление
+Дропаем данные
+  systemcts stop mysqld && cd /var/lib/mysql && rm -rf *
+
+Для полного восстановлени включая инкрементальные бекапы, восстановление происходит пошагово, начинаю от base
+  xtrabackup --prepare --apply-log-only --target-dir=/data/backups/base
+  xtrabackup --prepare --apply-log-only --target-dir=/data/backups/base --incremental-dir=/data/backups/inc1
+
+  xtrabackup --copy-back --target-dir=/data/backups/base && \
+  chown -R mysql:mysql /var/lib/mysql
+
+## binlog
+# Прочитать sql из binlog
+  mysqlbinlog /path/to/datadir/mysql-bin.000003
+
+# Стартовая позиция восстановления
+  cat /path/to/backup/xtrabackup_binlog_info
+
+# Восстановление до нужной точки
+  mysqlbinlog /path/to/datadir/mysql-bin.000003 /path/to/datadir/mysql-bin.000004 \
+  --start-position=57 \
+  --stop-datetime="11-12-25 01:00:00 > mybinlog.sql"
+
+# бекап конкретных таблиц
+  xtrabackup --backup --datadir=/var/lib/mysql --target-dir=/data/backups/ -- tables="^test[.].*"
+  xtrabackup --backup --tables-file=/tmp/tables.txt - передача списка таблиц из файла
+
+# бекап конеретных БД (схем)
+  xtrabackup --databases='mysql sys perfomance_schema ...'
+
+# подготовка для восстановления, опция -export, для подобного восстановления
+    xtrabackup --prepare --export --target-dir=/path/to/partial/backup
+      необходимо знать структуру таблиц(при помощи - mysqldump -d)
+      если восстанавливаем БД, то сначала CREATE DATABASE
+      создаем нужную таблицу
+      ALTER TABLE DISCARD TABLESPACE
+      копируем файлы таблицы
+      ALTER TABLE IMPORT TABLESPACE
+
+## stream
+# Направляем потор в STDOUT в формате xbstream, а STDOUT уже можно перенаправить куда угодно
+  xtrabackup --backup --stream=xbstream --target-dir=./ > backup.xbstream
+
+# с компрессией
+  xtrabackup --backup --stream=xbstream --compress --target-dir=./ > backup.xbstream
+
+# с шифрованием
+  xtrabackup --backup --stream=xbstream | gzip - | openssl des3 -salt -k "password" > backup.xbstream.gz.des3
+
+# расшифровка
+  openssl des3 -salt -k "password" -d in backup.xbstream.gz.des3 -out backup.xbstream.gz
+  gzip -d backup.xbstream.gz
+
+# распаковка файла xbstream
+  xbstream -x < backup.xbstream
+
+# Создание бекапа на удаленный сервер по ssh
+  xtrabackup --backup --compress --stream=xbstream --target-dir=./ | ssh xtrabackup@10.51.21.42 "xbstream -x -C backup"
+
+# Создание бекапа на удаленный сервер без ssh
+# слушаем на приемщике
+  nc -l 9999 | cat - > /data/backups/backup.xbstream
+# отсылаем с сервера базы
+  xtrabackup --backup --stream=xbstream | nc 10.51.21.42 9999
+# распаковка бекапа
+  xbstream -x < backup.xbstream

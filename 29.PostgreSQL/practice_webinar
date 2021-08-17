@@ -1,0 +1,93 @@
+practice_webinar
+https://github.com/okbob/pspg
+
+
+\? - справка
+\l - просмотр баз
+\d+
+\dS+ - системные таблицы
+
+Просмотр содержания таблицы
+    \x - переключение вида отображения
+    select * from pg_database;
+
+Подключение базы данных
+    \c template
+    \d+
+    \dS
+    \q - выход
+
+Создание базы
+    CREATE DATABASE db_name; - создание
+    createdb -Upostgres -p 5432 db_name;
+Удаление базы
+    DROP DATABASE db_name;
+    dropdb -U postgres -p 5432 db_name;
+    
+    \c otus - подключение
+    create table test(id serial, name varchar(100)); - cоздание таблицы c указанием sequence
+    \d+ - в описании объектов, мы увидем наши
+    \d test - указание того что мы хотим посмотреть
+        мы увидем nextval
+        можно давать такие команды
+            select nextval('test_id_seq'::regclass);
+
+Вставка значения
+    insert into test(name) values('otus')
+    select * from test;
+
+Проверка settings
+    select * from pg_settings;
+    SHOW ALL;
+
+После каждой операции увеличивается счётчик транзакций
+    select * from test;
+    select txid_current();
+
+Контрольная информация
+    pg_controldata /var/lib/pgsql/data
+
+Работа с транзакциями в таблице
+    1:40 минута вебинара
+
+
+В postgres  записи не меняются и не удаляются и у записей есть атрибуты
+    Xmin - ид транзакции, создавшей запись
+    Xmax - id транзакции, удалившей запись
+    Cmin - порядковый номер команды в транзакции, добавившей запись
+    Cmax - номер команды в транзакции, удалившей запись
+
+Дополнительные атрибуты строки
+    infomask содержит ряд битов, определяющих свойства данной версии
+        xmin_commited, xmin_aborted
+        xmax_commited, xmax_aborted
+    ctid является ссылкой на следующую, более новую, версию той же строки. У самой новой, актуальной версии строки ctid ссылается на саму эту версию
+        Номера ctid имеют вид(x,y): здесь x - номер станицы(page), y - порядковый номер указателя в массиве
+
+    select xmin,xmax,cmin,cmax,ctid,id,client from tbl;
+
+    select * from pg_stat_all_tables where relname='accounts'\gx
+
+--- locks
+SELECT pg_backend_pid();
+
+SELECT locktype, relation::REGCLASS, virtyalxid AS virtxid, transactionid AS xid, mode, granted
+FROM pg_locks WHERE pid = pg_backend_pid();
+
+SELECT * FROM pg_stat_activity
+WHERE pid = ANY(pg_blocking_pids(118)
+
+SELECT pg_advisory_lock(hashtext('ресурс1'));
+SELECT pg_advisory_unlock(hashtext('ресурс1'));
+
+--- просмотр журнала
+
+pg_waldump -r list
+pg_waldump -p /usr/local/pgsql/data/pg_wal -s 0/1C349E8 -e 0/1C349E8 000010010101000
+
+--- асинхронный коммит
+    ALTER SYSTEM SET synchronous_commit = off;
+    ALTER SYSTEM
+    SELECT pg_reload_conf();
+
+    pgbench -P 1 -T 10 wal_tuning

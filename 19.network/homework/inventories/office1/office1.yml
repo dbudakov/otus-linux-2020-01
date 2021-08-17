@@ -1,0 +1,7 @@
+all:
+  hosts:
+    office1Router:
+      ansible_port:
+
+    office1Server:
+      ansible_port:

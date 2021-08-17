@@ -1,0 +1,33 @@
+---
+- name: "##### DEFROUTE=no >> eth0 ######"
+  shell: "echo DEFROUTE=no >> {{ eth_00 }}"
+  notify: restart router
+
+- name: "##### set forwarding - true #####"
+  sysctl:
+    name: "{{ sysctl_name }}"
+    value: "1"
+    sysctl_set: yes
+
+- name: "##### Install package #####"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ centralRouter_package }}"
+
+- name: "##### route nginx #####"
+  iptables:
+    table: nat
+    chain: PREROUTING
+    in_interface: eth2
+    protocol: tcp
+    match: tcp
+    destination_port: "80"
+    jump: DNAT
+    to_destination: 192.168.101.2:80
+  become: yes
+
+- name: save iptables
+  shell: iptables-save > /etc/sysconfig/iptables
+  notify:
+    - restart iptables

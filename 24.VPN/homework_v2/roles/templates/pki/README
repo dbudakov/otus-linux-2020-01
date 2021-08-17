@@ -1,0 +1,2 @@
+/home/sysadm/otus/24.VPN/homework_v2/roles/templates/pki
+sudo openvpn --config client.conf 

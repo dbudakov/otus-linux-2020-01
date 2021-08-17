@@ -1,0 +1,31 @@
+- name: Create /obmen_1
+  file:
+    path: /obmen_1
+    state: directory
+    mode: "0777"
+
+- name: Start firewalld
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Rules for firewalld
+  shell: |
+    firewall-cmd \
+    --add-port=50370/udp \
+    --add-port=52169/udp \
+    --add-port=20048/udp \
+    --add-port=2049/udp \
+    --add-port=42494/udp \
+    --add-port=41310/udp \
+    --permanent
+    firewall-cmd --permanent --add-service=nfs
+    firewall-cmd --permanent --add-service=mountd
+    firewall-cmd --permanent --add-service=rpc-bind
+    firewall-cmd --reload
+
+- name: Mount /obmen_1
+  shell: |
+    echo "192.168.100.101:/obmen    /obmen_1   nfs    rsize=8192,wsize=8192,timeo=14,intr,udp,nfsvers=3" >> /etc/fstab
+    mount -a

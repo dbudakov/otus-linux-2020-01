@@ -1,0 +1,13 @@
+all:
+  ## переменные цепляются из roles/nginx/vars/main.yml
+  #  vars:
+  #    ansible_user: vagrant
+  #    ansible_ssh_private_key_file: ./.vagrant/machines/{{ inventory_hostname }}/virtualbox/private_key
+  hosts:
+    prod-nginx-01:
+      ansible_host: 127.0.0.1
+      ansible_port: port_prod-nginx-01 
+
+    prod-nginx-02:
+      ansible_host: 127.0.0.1
+      ansible_port: port_prod-nginx-02

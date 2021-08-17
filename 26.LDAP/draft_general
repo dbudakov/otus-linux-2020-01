@@ -1,0 +1,50 @@
+LDAP
+  Задействует такие сервисы как:
+    - AAA
+    - PAM
+    - LDAP
+    - NSS
+    - FreelPA
+
+Authentication(Аутентификация) - идентификация, процесс подтверждения пользователем своей "подлинности"
+  - ввод логин'а/пароля,ОТР,биометрия
+
+Authorization(Авторизация - процесс наделения пользователя правами(предоставления доступа к каким-либо объектам)
+
+Accounting - запись информации о произошедших событиях
+
+PAM
+  Pluggable Authentication Modules(подключаемые модули аутентификации) - набор библиотек предоставляющих API для реализации возможностей AAA
+
+
+Инструменты управления в больших сетях
+  1. "синхронизация" руками или скриптами
+    - важно помнить про унификацию
+      - пользователей(UID)
+      - группы(GID)
+      - домашние каталоги
+      - общие настройки
+
+  2. Управлять частью данных с помощью СМ систем типа Ansible
+
+  3. Использовать "взрослые" готовые(и не очень) решения
+    - LDAP
+      - OpenLDAP
+      - FreelPA
+      - Microsift AD
+      - Apache Directory Server
+    - NIS (Network Information Service) он же Yellow Pages
+
+cat /etc/openldap/ldap.conf
+
+hostname -I
+
+ipa-client-install --mkhomedir
+ssh amitaki@ipaclient.otus.lan -i ~/.ssh/otus_id
+
+cat /etc/pam.d/password-auth
+pam_oddjob_mkhomedir.so umask 0077
+
+sssd - 01:29
+
+ll /usr/libexec/oddjob/mkhomedir

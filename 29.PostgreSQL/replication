@@ -1,0 +1,47 @@
+practice
+
+Репликация
+    WAL файлы передаются по сети процессом wal_sender, postgres не останавливает процесс
+    Репликация делает каталоги двух баз идентичными, нельзя отреплецировать одну
+
+Репликация. Hot Standby.
+    По умолчанию реплика делается в режиме standby, т.е. режим чистого восстановления, которое не позволяет подключаться к базе. Для того, чтобы можно было читать со слейвы, существует режим Hot Standby
+
+    Готовим мастер
+        wal_level - устанавливаем в replica или hot_standby
+        wal_senders - число реплик
+        wal_keep_segments - число сохраняемых WAL-файлов на случай сбоя или отставания реплики
+        создаем пользователя
+            create user repluser with replication encrypted password '123'
+        в pg_hba.conf добавляем разрешение на репликацию
+            host replication repluser 192.168.100.2/32 md5
+        Делаем бекап и разворачиваем его на второй машине
+        Настраиваем recovery.conf
+            standby_mode='on' - не останавливаться на последнем WAL, а ждать новых
+            primary_conninfo = 'host=192.168.100.2 port=5432 user=postgres'
+
+Репликация. Hot Standby
+    На мастере в postgresql.conf
+        wal_level = replica(до 9.5 - hot_standby)
+    На слейве в recovery.conf
+        hot_standby = on
+
+Репликация. Переключение реплики.
+    Для создания автоматических систем переключения ролей, есть два инструмента
+        trigger_file в recovery.conf
+        pg_ctl promote
+    Оба механизма приводят к отключения от мастера, приведению себя в консистентное состояние и разрешение записи в базу
+    При этом postgresql переключается на новый timeline
+
+Репликация, статус
+    select * from pg_stat_replication;
+
+Репликация, слоты
+    Если  реплика отстает то ее можно потерять навсегда, из-за ротации WAL. Для отладки служит механизм обратной связи слейва с мастером - replication slots
+
+    Создаются они на мастере командой
+        SELECT
+        pg_create_physical_replication_slot('standby_slot');
+
+    На слейве в recovery.conf добавляется строчка
+        primary_slot_name = 'standby_slot'

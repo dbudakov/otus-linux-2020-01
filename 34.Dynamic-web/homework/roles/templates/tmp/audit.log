@@ -1,0 +1,15 @@
+type=AVC msg=audit(1595672676.937:1491): avc:  denied  { name_bind } for  pid=5163 comm="nginx" src=82 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:reserved_port_t:s0 tclass=tcp_socket permissive=0
+type=SYSCALL msg=audit(1595672676.937:1491): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=55d8bf5e9fd0 a2=10 a3=7fffbd6c1880 items=0 ppid=1 pid=5163 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="nginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)
+type=PROCTITLE msg=audit(1595672676.937:1491): proctitle=2F7573722F7362696E2F6E67696E78002D74
+type=SERVICE_START msg=audit(1595672676.961:1492): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=failed'
+
+
+type=AVC msg=audit(1595672676.937:1491): avc:  denied  { name_bind } for  pid=5163 comm="nginx" src=82 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:reserved_port_t:s0 tclass=tcp_socket permissive=0
+type=SYSCALL msg=audit(1595672676.937:1491): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=55d8bf5e9fd0 a2=10 a3=7fffbd6c1880 items=0 ppid=1 pid=5163 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="nginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)
+type=PROCTITLE msg=audit(1595672676.937:1491): proctitle=2F7573722F7362696E2F6E67696E78002D74
+type=SERVICE_START msg=audit(1595672676.961:1492): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=failed'
+
+type=AVC msg=audit(1595672676.937:1491): avc:  denied  { name_bind } for  pid=5163 comm="nginx" src=82 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:reserved_port_t:s0 tclass=tcp_socket permissive=0
+type=SYSCALL msg=audit(1595672676.937:1491): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=55d8bf5e9fd0 a2=10 a3=7fffbd6c1880 items=0 ppid=1 pid=5163 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="nginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)
+type=PROCTITLE msg=audit(1595672676.937:1491): proctitle=2F7573722F7362696E2F6E67696E78002D74
+type=SERVICE_START msg=audit(1595672676.961:1492): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='unit=nginx comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=failed'

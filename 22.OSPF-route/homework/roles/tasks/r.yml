@@ -1,0 +1,60 @@
+- name: Disable DEFROUTE for eth0
+  lineinfile:
+    path: "/etc/sysconfig/network-scripts/ifcfg-eth0"
+    state: present
+    insertafter: EOF
+    line: DEFROUTE=no
+  notify: restart network
+
+- name: Install soft
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ utilities }}"
+  notify: start zebra
+
+- name: Enable ip_forward
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: yes
+
+- name: Disable rp_filter
+  sysctl:
+    name: "{{ item }}"
+    value: "0"
+    sysctl_set: yes
+  loop: "{{ rp_filters }}"
+
+- name: Enable zebra in SELinux
+  shell: setsebool -P zebra_write_config 1
+
+- name: Copy Quagga.conf
+  template:
+    src: ../templates/{{ inventory_hostname }}/{{ item }}
+    dest: /etc/quagga/{{ item }}
+    owner: quagga
+    group: quagga
+    mode: "0600"
+  loop: "{{ route_conf }}"
+  notify:
+    - start zebra
+    - start ospfd
+    - restart zebra
+    - restart ospfd
+
+- name: Start firewalld
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Open 89 proto in firewalld/public
+  firewalld:
+    rich_rule: rule protocol value=89 accept
+    zone: public
+    permanent: yes
+    immediate: yes
+    state: enabled
+#- name:
+#  reboot:

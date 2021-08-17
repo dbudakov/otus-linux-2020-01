@@ -1,0 +1,29 @@
+InnoDB
+  режимы работы
+    - multi-master
+    - master-slave
+  почти(!) синхронная репликация
+  отказоустойчивый
+  легкорасширяемый
+  поддержка replicasets между кластерами
+
+MySQL Router
+  Перенаправляет запросы на доступные сервера
+  в случае сбоя ответа, отключает клиентскую сессию
+  по умолчанию слушает порты:
+    6446 - read-write, на primary сервера
+    6447 - read-only
+    64460 - read-write X-protocol
+    64470 - read-only X-protocol
+
+MySQL Shell
+  интерактивный шелл
+  поддержка JavaScript, Python and SQL
+  рекомендуется устанавливать на каждую ноду
+  встроенный API
+
+systemctl start mysqld
+mysqlsh --uri admin@mysql-node2 -e "var cluster = dba.rebootClusterFromCompleteOutage();"
+mysqlsh --uri admin@mysql-node2 -e "dba.getCluster();"
+mysqlsh --uri admin@mysql-node2 -e "cluster=dba.getCluster();"
+mysqlsh --uri admin@mysql-node2 -e "cluster.status();"

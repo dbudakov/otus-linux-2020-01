@@ -1,0 +1,9 @@
+---
+packages:
+  - openvpn 
+  - easy-rsa
+
+need_files:
+  - /etc/openvpn/pki/ca.crt
+  #- /etc/openvpn/pki/issued/client.crt
+  #- /etc/openvpn/pki/private/client.key

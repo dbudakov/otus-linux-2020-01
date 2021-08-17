@@ -1,0 +1,19 @@
+---
+ansible_user: vagrant
+ansible_host: 127.0.0.1
+ansible_ssh_private_key_file: ./.vagrant/machines/{{ inventory_hostname }}/virtualbox/private_key
+
+eth_00: "/etc/sysconfig/network-scripts/ifcfg-eth0"
+eth_01: "/etc/sysconfig/network-scripts/ifcfg-eth1"
+eth_02: "/etc/sysconfig/network-scripts/ifcfg-eth2"
+eth_03: "/etc/sysconfig/network-scripts/ifcfg-eth3"
+eth_04: "/etc/sysconfig/network-scripts/ifcfg-eth4"
+eth_05: "/etc/sysconfig/network-scripts/ifcfg-eth5"
+eth_06: "/etc/sysconfig/network-scripts/ifcfg-eth6"
+
+route_eth1: "/etc/sysconfig/network-scripts/route-eth1"
+route_eth2: "/etc/sysconfig/network-scripts/route-eth2"
+route_eth3: "/etc/sysconfig/network-scripts/route-eth3"
+
+sysctl_name: net.ipv4.conf.all.forwarding
+#  - net.ipv4.conf.all.proxy_arp

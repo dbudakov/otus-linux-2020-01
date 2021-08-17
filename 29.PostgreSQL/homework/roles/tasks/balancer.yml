@@ -1,0 +1,97 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: Adding users
+  user:
+    name: postgres
+    state: present
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+
+- name: Create authorized_keys
+  file:
+    path: /home/postgres/.ssh/authorized_keys
+    owner: postgres
+    group: postgres
+    mode: "0600"
+    state: touch
+
+- name: Create dir for keys
+  file:
+    path: /vagrant/keys
+    state: directory
+
+- name: Copy pg:id_rsa in hot-standby:authorized_keys
+  template:
+    src: ../roles/templates/keys/{{ item }}/home/postgres/.ssh/id_rsa.pub
+    dest: /vagrant/keys/{{ item }}-id_rsa.pub
+  loop:
+    - pg
+    - hot-standby
+
+- name: Assemble from fragments from a directory
+  assemble:
+    src: /vagrant/keys/
+    dest: /home/postgres/.ssh/authorized_keys
+
+- name: Install repo PostgreSQL
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: Install PostgreSQL
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+- name: Disable check known_hosts
+  shell: echo StrictHostKeyChecking=no >> /etc/ssh/ssh_config
+  notify: restart sshd
+
+- name: Add ssh-key an pg, hot-standby
+  shell: |
+    sshpass -p "vagrant" scp /home/postgres/.ssh/id_rsa.pub root@192.168.100.101:/vagrant/balancer-id_rsa.pub
+    sshpass -p "vagrant" ssh root@192.168.100.101 'cat /vagrant/balancer-id_rsa.pub >> /home/postgres/.ssh/authorized_keys'
+    sshpass -p "vagrant" scp /home/postgres/.ssh/id_rsa.pub root@192.168.100.102:/vagrant/balancer-id_rsa.pub
+    sshpass -p "vagrant" ssh root@192.168.100.102 'cat /vagrant/balancer-id_rsa.pub >> /home/postgres/.ssh/authorized_keys'
+
+- name: Copy pgpool.conf
+  template:
+    src: ../../roles/templates/balancer/pgpool.conf
+    dest: /etc/pgpool-II-11/pgpool.conf
+
+- name: Copy pool_hba.conf
+  template:
+    src: ../../roles/templates/balancer/pool_hba.conf
+    dest: /etc/pgpool-II-11/pool_hba.conf
+
+- name: Copy pool_hba.conf
+  template:
+    src: ../../roles/templates/balancer/failover.sh
+    dest: /etc/pgpool-II-11/failover.sh
+    mode: "0755"
+
+- name: firs start pgpool
+  shell: |
+    /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+    kill kill $(pgrep pgpool|head -1)
+  notify: start_pgpool
+
+- name: Create /usr/lib64/pgsql
+  file:
+    path: /usr/lib64/pgsql
+    state: directory
+    mode: 0755
+
+- name: Copy pgpool-walrecrunning.so
+  copy:
+    src: ../../roles/templates/all/pgpool-walrecrunning.so
+    dest: /usr/lib64/pgsql/pgpool-walrecrunning.so
+
+- name: Copy pgpool-walrecrunning.sql
+  template:
+    src: ../../roles/templates/all/pgpool-walrecrunning.sql
+    dest: /usr/share/pgsql/pgpool-walrecrunning.sql

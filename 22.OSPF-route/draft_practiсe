@@ -1,0 +1,86 @@
+quagga
+  yum install quagga
+  ls /etc/quagga  # конфиги
+  ls -la /etc/quagga |awk '{pint $3 $4}' # владельцем файлов должен быть quagga
+  ps ax| grep zebr[a] # демон quagga'и для управления др.демонами
+  ps ax|grep ospfd
+
+  vtysh
+  ? #справка
+  sh running-config #конфигурация
+  wr #сохранить конфиг
+  copy running-congif startup-config
+  configure terminal # для перехода в конфигурационный режим
+    для конфигурации демона OSPF,
+      ospfd должен быть включен
+      конфиг должен лежать в нужном месте и нужными правами
+
+  (config)router ospf
+  (config-router)# do sh run # конфигурация
+  (config-router)# no router ospf # удаление всей секции ospf
+  (config)# do sh ip ro # таблица маршрутизации
+
+  (config) router ospf
+  (config-router) router-id 10.0.0.1 #задаем RouterID по факту это просто число, но для удобства пишем его в виде ip
+  (config-router)# passive-interface default # переводим все интерфейсы в пассивный режим, чтобы интерфейсы не рассылали ненужные пакеты
+  (config-router)# no passive-interface eth1 # разрешаем нужный интерфейс
+  (config-router)# network 10.0.0.1/32 area 0 # объявление сети
+  (config-router)# network 172.16.0.0/24 area 0
+  (config-router)# do sh run
+  exit
+  (config)# sh ip ro #таблица маршрутизации
+    network 10.0.0.1/32 area 0.0.0.0 # пример записи из табл маршрутизации, area 0.0.0.0, нулевая зона, если area 1, то будет area 0.0.0.1
+  (config)# sh ip ospf neghbor #просмотр соседей
+  (config-router)# default-information originate #установка дефолтного маршрута
+
+  O>* 10.0.0.2/32 [110/10] via 172.16.0.2, eth1, 00:04:08
+  C>* 172.16.0.0/24 is directly connected, eth1
+  * в выводе 'sh ip ro', означает FIB, выбор из табл маршрутизации (#ip ro sh)
+  [110/10] - здесь 110- стандартная административная дистанция,степень надежности источника маршрутной информации,чем меньше число, тем выше уровень доверия
+    статический маршрут по умолчанию 1
+    directly connected имеет адм.дист 0
+  [110/10] - 10-это цена линка, стандартно 10, то есть до искомой сети 1 линк, в случае если значение 40, то линка 4,цену можно изменять.
+  OSPF считает стоимость линков только в сторону отправки пакета, не беря во внимание стоимость обратного маршрута, в свою очередь он будет считаться когда пакет пойдет обратно.
+  настройка непосредственно интерфейса
+(config)# interface eth3
+(config-if)# ip ospf #вывод список настроек интерфейса
+hello-intervall
+dead-interval
+network - тип сети
+mtu-ignore - должны совпадать(если они не совпадают, можно заставить игнорировать mtu)
+authentication - мини защита чтобы левый роутер не поломал сеть, своими левыми настройками
+priority - определяет приоритет при выборе DR
+(config-if)# ip ospf cost 1000 #установка стоимости на интерфейсе изменит карту маршрутизации.
+
+Доп.инфа:
+  router ospf
+  ospf router-id 10.0.0.1
+  passive-interface default
+  no passive-interface eth1
+  network 10.0.0.1/32 area 0.0.0.0
+  network 172.16.0.0/24 area 0.0.0.0
+  default-information originate
+
+  sysctl_network(https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt)
+
+Looking Glass(LG)(зеркало)- серверы в Интернет, для проверки маршрутизации из удалённой автономной системы
+  https://lg.selectel.ru
+  http://lg.retn.net
+  https://www.msk-ix.ru/lookingglass
+  Утилита whois позволяет запрашивать данные по AS и сетям в базе RIPE
+  веб интерфейс базы RIPE: https://www.ripe.net
+
+Настройка дополнительного lo:
+  /etc/sysconfig/network-scripts/ifcfg-lo.2
+  DEVICE=lo:2
+  IPADDR=10.0.0.3
+  PREFIX=32
+  NETWORK=10.0.0.3
+  ONBOOT=yes
+
+Настройка ospf в firewalld
+  systemsctl start firewalld
+  firewall-cmd --add-protocol=ospf
+
+proto zebra - получение по dhcp
+prote kernel - получение адреса вручную

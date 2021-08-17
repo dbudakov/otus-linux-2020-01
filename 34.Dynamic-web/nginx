@@ -1,0 +1,5 @@
+nginx
+/etc/opt/rh/rh-nginx116/nginx/conf.d/zabbix.conf
+/etc/opt/rh/rh-nginx116/nginx/fastcgi_params
+/etc/opt/rh/rh-nginx116/nginx/fastcgi_params.default
+/etc/opt/rh/rh-nginx116/nginx/uwsgi_param

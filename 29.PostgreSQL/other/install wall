@@ -1,0 +1,14 @@
+yum install libicu-devel-50.2-4.el7_7.x86_64
+yum install https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/llvm5.0-libs-5.0.1-7.el7.x86_64.rpm
+yum install wget -y
+yum install https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/llvm5.0-5.0.1-7.el7.x86_64.rpm
+yum install https://rpmfind.net/linux/epel/7/x86_64/Packages/l/llvm5.0-devel-5.0.1-7.el7.x86_64.rpm
+yum install  https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+yum install libedit-devel-3.0-12.20121213cvs.el7.x86_64
+yum install centos-release-scl-rh
+yu minstall llvm-toolset-7-clang
+yum install https://download.postgresql.org/pub/repos/yum/11/redhat/rhel-7-x86_64/postgresql11-devel-11.8-1PGDG.rhel7.x86_64.rpm
+yum install postgresql-devel.x86_64
+yum install gcc
+wget https://apt.postgresql.org/pub/projects/pgFoundry/pgpool/pgpool-II/pgpool-II3.0.3/pgpool-II-3.0.3.tar.gz
+tar -zxf pgpool-II-3.0.3.tar.gz

@@ -1,0 +1,38 @@
+- name: Create directory conf.d
+  file:
+    path: /vagrant/conf.d/
+    mode: 0755
+    owner: vagrant
+    group: vagrant
+    state: directory
+
+- name: Copy conf.d recursive
+  synchronize:
+    src: ../roles/templates/master_conf.d/
+    dest: /vagrant/conf.d/
+    recursive: yes
+
+- name: Copy bet.dmp
+  copy:
+    src: ../roles/templates/bet.dmp
+    dest: /vagrant/
+
+- name: main shell
+  shell: |
+    yum install https://www.percona.com/redir/downloads/percona-release/redhat/1.0-21/percona-release-1.0-21.noarch.rpm -y
+    yum install Percona-Server-server-57 -y
+
+    cp /vagrant/conf.d/* /etc/my.cnf.d/
+    systemctl enable mysqld && systemctl start mysqld
+
+    echo [client] > /root/.my.cnf
+    echo "password=`grep -i root@localhost /var/log/mysqld.log |awk '{print $NF}'`" >> /root/.my.cnf
+
+    mysql --connect-expired-password -e "ALTER USER USER() IDENTIFIED BY 'P@ssw0rd';"
+    sed -i 's/password/\#password/' /root/.my.cnf
+    echo "password=\"P@ssw0rd\"" >> /root/.my.cnf
+
+    mysql -e "CREATE DATABASE bet;"
+    mysql -D bet < /vagrant/bet.dmp
+    mysql -e  "CREATE USER 'repl'@'%' IDENTIFIED BY 'P@ssw0rd1';"
+    mysql -e  "GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%' IDENTIFIED BY 'P@ssw0rd1';"

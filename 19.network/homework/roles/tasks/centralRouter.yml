@@ -1,0 +1,54 @@
+---
+- name: "##### eth1 centralRouter --> inetRouter #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth1
+    dest: "{{ eth_01 }}"
+  notify: restart router
+
+- name: "##### eth2 centralRouter --> office1Router #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth2
+    dest: "{{ eth_02 }}"
+  notify: restart router
+
+- name: "##### eth3 centralRouter --> office2Router #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth3
+    dest: "{{ eth_03 }}"
+  notify: restart router
+
+- name: "##### eth4 centralRouter --> dir-subnet #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth4
+    dest: "{{ eth_04 }}"
+  notify: restart router
+
+- name: "##### eth5 centralRouter --> hw-subnet #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth5
+    dest: "{{ eth_05 }}"
+  notify: restart router
+
+- name: "##### eth6 centralRouter --> mgt-subnet #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth6
+    dest: "{{ eth_06 }}"
+  notify: restart router
+
+- name: "##### route 192.0.0.0/16 via 192.0.255.1 #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/route-eth1
+    dest: "{{ route_eth1 }}"
+  notify: restart router
+
+- name: "##### route 192.0.2.0/24 via 192.0.5.2 #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/route-eth2
+    dest: "{{ route_eth2 }}"
+  notify: restart router
+
+- name: "##### route 192.0.1.0/16 via 192.0.6.2 #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/route-eth3
+    dest: "{{ route_eth3 }}"
+  notify: restart router

@@ -1,0 +1,20 @@
+00:14 - взаимодействие процесса с unix сокетом
+00:17 - взаимодействие процесса с tcp сокетом
+00:25 - процесс работы подключения приложения с ядром
+00:31 - epool(evan pool)
+00:52 - devtools chrome(F12 of Ctrl+Shift+[i])
+00:54 - debug отталкиваясь от devtools\headers
+01:02 - сравнение epol, Kqueue, Poll, Select на benchmark,
+01:05 - балансировка nginx на воркерах
+01:08 - устройство и оптимизация(балансировка) web-портала
+01:30 - CGI
+01:35 - nginx + php-fpm
+01:40 - Apache modules
+01:47 - php config
+01:53 - WSGI
+02:01 - виды директив и сокетов nginx
+02:16 - Ajax(asinchroning java script execution)
+02:19 - HTML5 SSE(Server Sent Events)
+02:20 - Websocket
+02:26 - yandex.tank
+02:34 - homework

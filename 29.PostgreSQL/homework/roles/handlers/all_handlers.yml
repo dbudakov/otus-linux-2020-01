@@ -1,0 +1,17 @@
+- name: restart sshd
+  systemd:
+    name: sshd
+    state: restarted
+    enabled: true
+
+- name: start_pgpool
+  systemd:
+    name: pgpool-II-11.service
+    state: started
+    enabled: true
+
+- name: restarted_pgsql
+  systemd:
+    name: postgresql-11
+    enabled: yes
+    state: restarted

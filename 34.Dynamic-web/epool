@@ -1,0 +1,5 @@
+epool
+epoll_create() -
+/proc/ses/fs/epool/max_user_watches - максимальное кол-во наблюдаемых fd для каждого RealUID
+
+https://habr.com/ru/company/infopulse/blog/415259/

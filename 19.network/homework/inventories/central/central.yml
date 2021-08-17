@@ -1,0 +1,7 @@
+all:
+  hosts:
+    centralRouter:
+      ansible_port: 2222
+
+    centralServer:
+      ansible_port:

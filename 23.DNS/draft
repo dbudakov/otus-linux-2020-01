@@ -1,0 +1,176 @@
+DHCP - Dynamic Host Configuration Protocol`
+  man dhcpd.conf
+  Работает только в пределах широковещательного домена
+https://www.iana.org/assignments/bootp-dhcp-parameters/bootp-dhcp-parameters.xhtml
+
+255.255.255.255 - ff:ff:ff:ff:ff:ff
+
+Настройка сервера
+  Варианты сервисов для работы DHCP сервера
+    dhcpd
+    dnsmask
+    icdhcp в составе пакета dhcp
+
+  Состояние демона
+    systemctl status dhcpd
+
+  Конфиги:
+    /etc/dhcp/dhcpd.conf
+    /etc/dhcp/dhcpd6.conf
+subnet
+  range 192.168.50.100 192.168.50.199 - означает стэк(диапазон) адресов
+
+запускаем 'tcpdump -i eth1 -n '(udp port 67 of 68)'
+с клиента тушим и поднимаем интерфейс 'ip link set eth1 down' && 'ip link set eth1 up'
+  В результате в выводе `tcpdump` мы увидим:
+  ## с неизвестного адреса на броадкаст пошёл запрос, адреса были закэшированы поэтому произошёл быстрый обмен.
+  IP 0.0.0.0.bootpc > 255.255.255.255.bootps: BOOTP/DHCP, Request from 08:00:27:25:4e:80, length 300
+  IP 192.168.50.200.bootps > 192.168.50.101.bootps:BOOTP/DHCP,Request from, 08:00:27:25:4e:80, lenght 300
+  IP 192.168.50.10.bootps > 192.168.50.101.bootpc: BOOTP/DHCP, Reply, length 300
+  IP 192.168.50.10.bootps > 192.168.50.101.bootpc: BOOTP/DHCP, Reply, length 300
+
+DHCP relay
+  ВАЖНЫЕ МОМЕНТЫ:
+    - настройка dhcrelay
+    - настройка dhcp для сегмента
+    - маршруты в нужный сегмент
+  Входит в пакет `dhcp`. Для настройки создается юнит файл для systemd:
+    /etc/systemd/system/dhcrelay.service
+
+DHCP сообщения
+  DHCPDISCOVER - широковещительный  запрос с целью обнаружения DHCP   сервера
+  DHCPOFFER -  ответ от серверо с предложением  о варианте конфигурации
+  DHCPREQUEST - клиент соглашается на предложенный сервером вариант
+  DHCPACK - подтверждение от сервера о выделенной конфигурации
+
+  в случае отклонения от нормы:
+  DHCPNAK(not acknowlege) - сервер не подтверждает request клиента или клиентсткий lease истёк
+  DHCPDECLINE - клиент сообщает серверу, что запрашиваемый адрес используется, например в случае если от клиента долго не было ответа на OFFER
+  DHCPRELEASE - клиент сообщает серверу что он закончил использовать адрес и освобождает lease
+  DHCPINFORM - Запрос на конфигурацию без выделения IP адреса
+
+Настройки dhcp
+## /etc/dhcp
+default-lease-time 600;      #время на которое выдается аренда(сек, обычно 8 дней)
+max-lease-time 7200;         #время хранения записи лизов(сек)
+authorative;                 # отправить DHCPNAK в случае обращения некорректного адреса
+option domain-name-servers 8.8.8.8, 8.8.4.4;  #опция отдать днс сервера, cat /etc/resolv.conf
+option domain-name "example.com";             #опция отдать днс имя
+
+ddns-updates true;           #обновление ДНС записей
+ddns-updates-style interim;  #
+update-static-leases on;     #
+
+key DHCP_UPDATE {             # аутентификация по ключу, который необходимо сгенерить на DNS сервере
+  algotithm HMAC-MD5;
+  secret "GrtiE9kz16GK+OKKU/qJvQ==";
+}
+
+zone dns.lab {                # конкретный ключ позволит нам обновлять зону dns.lab
+  primary 192.168.50.10;      # мастер сервер ДНС, к которому полетят вопросы по обновлению
+  key DHCP_UPDATE;
+}
+
+subnet 192.168.50.0 netmask 255.255.255.0 { # добавление сегмента
+  range 192.168.50.100 192.168.60.199;  # стэк адресов
+  ## опции для стека имеют приоритет перед теми которые указаны в основной части конфига
+  option subnet-mask 255.255.255.0;  #передача маски подсети
+  option routers 192.168.50.10; # список IP маршрутизаторов(через запятую) для клиентской сети(задает default)
+  option ntp-servers [ip] # список ntp серверов
+  option domain-name-servers [ip] # список ДНС серверов доступных клиенту, cat /etc/resolv.conf
+  get-lease-hostnames true;    # запрос hostname для записи в дальнейшем
+  use-host-decl-names true;
+  default-lease-time 1200;     # изменение лиз-таймов
+  max-lease-time 7200;         #
+
+  host client1 {               # bind для конкретного клиента, в котором также можно указать конкретные опции
+    hardware ethernet 08:00:27:46:f6:a8;
+    fixed-address 192.168.50.15;
+  }
+}
+
+subnet 10.0.2.0 netmask 255.255.255.0 {} # сеть привязана к конкретному интерфейсу(vagrant eth0) и указан пустой стек для того чтобы этот интерфейс не слушал и соответственно ничего не выдавал
+
+Для разделения subnet, например часть для bind'a а остальных для dhcp, то можно воспользоваться
+
+
+Если посмотреть вывод "ps ax|grep dhc" с клиента, можно увидеть что висит демон "dhclient ..." с множеством опций, причем он висит на кажном из интерфейсов в режиме dhcp, а эти опции берутся в результате работы "/etc/sysconfig/network-scripts/ifup-eth", который отрабатывает при включении интерфейса. Скрипт задействует файл /var/lib/NetworkManager/dhclient-5fb06bd0-0bb0-7ffb-45f1-d6edd65f3e03-eth0.lease
+или /var/lib/dhclient. В содержиние этого файла собственно список полученных адресов
+## /etc/sysconfig/network-scripts/ifup-eth
+## /var/lib/dhclient/*.lease
+lease {
+  interface "eth1";
+  fixed-address 192.168.60.100;
+  option subnet-mask 255.255.255.0;
+  option routers 192.168.60.10;
+  option dhcp-lease-time 600;
+  option dhcp-message-type 5;
+  option domain-name-servers 8.8.8.8,8.8.4.4;
+  option dhcp-server-identifier 192.168.50.10;
+  option domain-name "example.com";
+  renew 4 2020/05/14 17:40:20;
+  rebind 4 2020/05/14 17:44:31;
+  expire 4 2020/05/14 17:45:46;
+}
+
+На сервере есть своя централизованная БД со всеми выданными адресами
+## /var/lib/dhcpd/dhcpd6.leases
+## /var/lib/dhcpd/dhcpd.leases
+lease 192.168.50.100 {
+  starts 4 2020/05/14 12:42:49;        #начало лиза
+  ends 4 2020/05/14 13:02:49;          #конец лиза
+  tstp 4 2020/05/14 13:02:49;
+  cltt 4 2020/05/14 13:02:49;
+  binding state free;                  # на данный момент свободен
+  hardware ethernet 08:00:27:f1:19:08; # конкретный мак
+  //client-hostname "client2";         # при наличии этой строки используется для обновления ДНС записи
+}
+
+
+DHCPv6
+## /etc/dhcp/dhcpd6.conf
+default-lease-time 2592000; #время жизни адреса
+preferred-lifetime 604800;  # время за которое он стане префёрд, клиент должен обратиться к серверу за обновлением аренды
+option dhcp-renewal-time 3600; # как часто клиент будет обращаться к серверу не зависит от "preferred"
+option dhcp-rebinding-time 7200;
+option dhcp6.name-servers 3ffe:501:fff:100:200:ff:fe00:3f3e; # передача опций
+option dhcp6.domain-search "example.com";
+
+subnet6 3ffe:501:ffff:100::/64 {
+  range6 3ffe:501:fff:100::65 3ffe:501:ffff:100::127;
+  option dhcp6.name-servers 3ffe:501:fff:100:200:ff:fe00:3f3e:
+  option dhcp6.domain-search "dns.lab;
+}
+
+# привязка клиентов не входит в блок subnet, привязка по МАК'у из коробки не работает, вместо него используется идентификатор HOST'a([DUID](https://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xhtml#dhcpv6-parameters-6))
+host client1 {
+  #hardware ethernet 08:00:27:46:f6:a8;
+  fixed-address6 3ffe:501:ffff:100::128;
+  host-identifier option dhcp6.client-id 00:04:94:7f:17:ce:28:32:ac:94:4f:dd:93:14:18:0e:a5:f9;
+}
+
+
+SERVER_DHCPv6
+## /etc/dhcp/dhcpd6.leases
+server-duid "***"
+ia-na "***"
+  cltt  4 2020/05/14 17:18:07;
+  iaaddr 3ffe:501:ffff:100::122 {
+    binding state active;
+    preferred-life 604800;
+    max-life 2592000;
+    ends 6 2020/06/13 17:18:07;
+  }
+}
+
+на сервере в lease'ах dhcp6 не указывается MAC  и бинд для него осуществляется другими способоми:
+
+1. Если адрес еще не получен преобразовать  default-duid из /var/lib/NetworkManager/dhclient6-[9c92-***]-eth1.lease
+    printf "\000\004\224\177\027\316(2\254\224O\335\223\024\030\016\245\371" | hexdump -e '14/1 "%02x " "\n"' | sed 's/ /:/g'
+
+2. Получить адрес и вытащить нужную строку из /var/lib/NetworkManager/dhclient6-[9c92-***]-eth1.lease
+    option dhcp6.client-id
+
+3. перехватить трафик обмена между серверами и обнаружить этот ID
+
+ВОЗМОЖНО: при выдаче статического маршрута нужно еще отдельно дефолт отдавать, либо отключать соответствие rfc в конфиге dhclient'a, параметр rfc3442-classes-static-routers

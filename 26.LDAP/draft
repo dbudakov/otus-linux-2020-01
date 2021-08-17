@@ -1,0 +1,14 @@
+draft
+cat /etc/openldap/ldap.conf
+
+hostname -I
+
+ipa-client-install --mkhomedir
+ssh amitaki@ipaclient.otus.lan -i ~/.ssh/otus_id
+
+cat /etc/pam.d/password-auth
+pam_oddjob_mkhomedir.so umask 0077
+
+sssd - 01:29
+
+ll /usr/libexec/oddjob/mkhomedir

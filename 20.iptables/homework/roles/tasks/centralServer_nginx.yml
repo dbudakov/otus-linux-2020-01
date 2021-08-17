@@ -1,0 +1,29 @@
+---
+- name: "Create file for NGINX repo"
+  file:
+    path: "{{ nginx_repo_path }}"
+    state: touch
+
+- name: "Add official NGINX repo"
+  blockinfile:
+    path: "{{ nginx_repo_path }}"
+    block: |
+      [nginx-stable]
+      name=nginx stable repo
+      baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
+      gpgcheck=1
+      enabled=1
+      gpgkey=https://nginx.org/keys/nginx_signing.key
+      module_notfixes=true
+
+- name: Install NGINX
+  yum:
+    name: nginx
+    state: present
+  notify:
+    - start nginx
+
+- name: "Copy index.html"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/index.html.j2
+    dest: /usr/share/nginx/html/index.html

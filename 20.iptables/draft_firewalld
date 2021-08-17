@@ -1,0 +1,110 @@
+bash avto complete - пакет для табуляции
+watch - утилита для динамического просмотра файлов
+snat - source nat
+dnat - destenation nat
+
+ip6tables # отдельная таблица, отличная от iptables
+
+arp\tables  # отдельные таблица
+eb\tables   # отдельная таблица
+nf\conntrack# "net filter connection tracker" вывод похож на "ss" or "netstat" лежит в /proc/net/nf_conntrack
+nf\tables   # отдельная таблица
+
+
+util:
+  iptables/ip6tables
+  ipset
+  ebtables
+  arptables
+  firewalld
+  nft
+
+
+
+
+firewalld:
+  firewall-cmd --state        # состояние
+
+  пример команд:
+  firewall-cmd --[add/remove/query]-[service/port/masquerade/icmp-block/foward-port]
+
+
+сервисы:
+  firewall-cmd --info-service=k8s # информаци по сервису
+
+  firewall-cmd --add-service=k8s              # add service in firewalld
+  firewall-cmd --remove-service=k8s           # del service in firewalld
+  firewall-cmd --add-service=k8s --permanent  # пишет правила в файлы конфигов, активируются после `firewall-cmd --reload`
+
+
+  firewall-cmd --get-services # xml формат /usr/lib/firewalld/services/*.xml
+  firewall-cmd --query-service=<service>  # запрос сервисов, смотрит в public зону
+
+
+  firewall-cmd -add-port=3030/tcp # добавление порта
+
+
+
+
+зоны:
+Зоны могут быть привязаны либо к interface(eth0) либо к source(source address)
+одна зона один интерфейс
+исключать порты нельзя
+Работает на L3/L4
+
+firewall-cmd --list-all # правила по текущей активной зоне
+---
+[name] (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: eth0 eth1
+  sources:                        # source address
+  services: ssh dhcpv6-client     # /etc/firewalld/services/*
+  ports:
+  protocols:
+  masquerade: no                   # nat
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+---
+
+
+  firewall-cmd --list-all-zones # посмотреть правила во всех зонах
+  firewall-cmd --get-zones # посмотреть все зоны
+  firewall-cmd --get-active-zones # посмотреть активные зоны
+
+Добавление зоны:
+  firewall-cmd --permanent --new-zone=custom_name && \
+  firewall-cmd --reload
+  firewall-cmd --zone=custom_name --list-all
+
+Добавление интерфейса к зоне
+  firewall-cmd --zone=trusted --add-interface=eth0
+  firewall-cmd --zone=work --change-interface=eth0
+  firewall-cmd --zone-work -remove-interface=eth0
+
+## реализация nat через firewalld
+  firewall-cmd [--zone=<zone>] --[add/remove/query]-forward-port=port=<port>[-<port>]:proto=<protocol>{:toport=<port>[-<port>] | :toaddr=<address> | :toport=<port>[-<port>]:toaddr=<address> }
+
+rich rule:
+  firewall-cmd --permanent --zone=mai --list-rich-rules # вывести список рич* правил для опред табл
+
+  Пример "rich rule":
+  firewall-cmd --permanent --zone=mai --add-rich-rule='rule
+  family=ipv4 source address=10.0.0.0/24 destination
+  address=192.168.0.10/32 port port=8080-8090 protocol=tcp accept'
+
+  "rich rule" для проброса порта:
+    firewall-cmd --permanent --zone=otus
+    --query-forward-port=port=22:proto=tcp:toport-2222:toaddr=10.0.0.10
+
+##  оснастка в `firewalld` непосредственно для работы с ipv4|ipv6|eb
+  firewall-cmd --direct --add-chain {ipv4|ipv6|eb} <table> <chain>
+                        --remove-chain <table> <chain>
+                        --query-chain <table> <chain>
+                        --get-chains <table>
+                        --add-rule { ipv4 | ipv6 | eb } <table> <chain> <priority> <args>
+                        --remove-rule { ipv4 | ipv6 | eb } <table> <chain> <args>
+                        --query-rule { ipv4 | ipv6 | eb } <table> <chain> <args>
+                        --get-rules { ipv4 | ipv6 | eb } <table> <chain>

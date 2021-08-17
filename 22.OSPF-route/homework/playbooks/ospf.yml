@@ -1,0 +1,14 @@
+- name: deploy
+  hosts:
+    - r1
+    - r2
+    - r3
+  gather_facts: no
+  become: yes
+  roles:
+    - role: roles
+  tasks:
+    - include: ../roles/tasks/r.yml
+  #    - include: ../roles/tasks/{{ inventory_hostname }}.yml
+  handlers:
+    - include: ../roles/handlers/handlers.yml

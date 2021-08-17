@@ -1,0 +1,23 @@
+- name: "##### route nginx #####"
+  iptables:
+    table: nat
+    chain: PREROUTING
+    in_interface: eth2
+    protocol: tcp
+    match: tcp
+    destination_port: "8080"
+    jump: DNAT
+    to_destination: 192.168.155.2:80
+  become: yes
+
+- name: install iptables-service
+  yum:
+    name: iptables-services
+    state: present
+  notify:
+    - restart iptables
+
+- name: save iptables
+  shell: iptables-save > /etc/sysconfig/iptables
+  notify:
+    - restart iptables

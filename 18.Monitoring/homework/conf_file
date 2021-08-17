@@ -1,0 +1,4 @@
+/etc/opt/rh/rh-nginx116/nginx/nginx.conf
+/etc/opt/rh/rh-nginx116/nginx/conf.d/zabbix.conf
+
+/opt/rh/rh-nginx116/register.content/etc/opt/rh/rh-nginx116/nginx/nginx.conf

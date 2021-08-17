@@ -1,0 +1,40 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby:
+Vagrant.configure("2") do |config|
+	config.vm.define "innodb" do |os|
+		os.vm.box = "centos/7"
+		os.vm.host_name = "innodb"
+		os.vm.network  "private_network", ip: '192.168.100.101'
+		os.vm.provider :virtualbox do |vb|
+			vb.customize ["modifyvm", :id, "--memory", "1024"]
+		end
+		os.vm.boot_timeout = 180
+		os.vm.provision "shell", inline: <<SHELL
+
+			# Install MySQL
+			yum install https://repo.percona.com/yum/percona-release-latest.noarch.rpm -y
+			yum install  Percona-Server-server-57  -y
+			systemctl enable mysqld && systemctl start mysqld
+			echo [client] > /root/.my.cnf
+			echo password=mysql >> /root/.my.cnf
+
+			# Down Selinux
+			setenforce 0
+
+			# Install docker and docker-compose
+			yum install -y docker && systemctl start docker && systemctl enable docker
+			sudo curl -L "https://github.com/docker/compose/releases/download/1.25.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+			sudo chmod +x /usr/local/bin/docker-compose
+			sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+			# docker-compose up
+			cd /vagrant/mysql-docker-compose-examples/innodb-cluster/
+			sudo docker-compose up &
+			sleep 180
+
+SHELL
+	end
+## Устанавливаем связь между каталогом "./src" хост-системы
+## и каталогом "/home/vagrant" гостевой системы.
+#		config.vm.synced_folder "./src", "/home/vagrant"
+end

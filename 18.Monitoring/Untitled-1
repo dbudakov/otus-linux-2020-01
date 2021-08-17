@@ -1,0 +1,71 @@
+https://www.zabbix.com/download?zabbix=5.0&os_distribution=red_hat_enterprise_linux&os_version=8&db=mysql
+https://www.zabbix.com/download?zabbix=5.0&os_distribution=centos&os_version=7&db=postgresql&ws=nginx
+https://www.zabbix.com/documentation/3.0/ru/manual/installation/install_from_packages/server_installation_with_postgresql
+CentOS → Настройка сервера Zabbix с PostgresSQL на CentOS (Zabbix+PostgreSQL+Nginx+php)
+    https://howitmake.ru/blog/centos/165.html
+
+УСТАНОВКА ZABBIX 4 С БАЗОЙ POSTGRESQL 9.6
+    https://www.kost.su/%d1%83%d1%81%d1%82%d0%b0%d0%bd%d0%be%d0%b2%d0%ba%d0%b0-zabbix-4-%d1%81-%d0%b1%d0%b0%d0%b7%d0%be%d0%b9-postgresql-9-6/
+
+ZABBIX 3.4 НА LINUX CENTOS 7 И БАЗОЙ POSTGRESQL
+    https://www.kost.su/zabbix-3-4-%D0%BD%D0%B0-linux-centos-7-%D0%B8-%D0%B1%D0%B0%D0%B7%D0%BE%D0%B9-postgresql/
+
+Zabbix cannot connect to a PostgreSQL database
+    https://serverfault.com/questions/665228/zabbix-cannot-connect-to-a-postgresql-database
+
+Zabbix Documentation. Вход и настройка пользователя
+    https://www.zabbix.com/documentation/3.0/ru/manual/quickstart/login
+
+https://wiki.archlinux.org/index.php/Zabbix_with_NGINX_how-to_(%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9)
+https://postgrespro.ru/docs/postgresql/9.6/auth-pg-hba-conf
+
+
+
+
+rpm -Uvh https://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-release-5.0-1.el7.noarch.rpm && yum clean all
+yum install zabbix-server-pgsql zabbix-agent -y
+yum install centos-release-scl -y
+
+vi /etc/yum.repos.d/zabbix.repo
+
+yum install postgresql-server -y && postgresql-setup initdb
+yum install zabbix-web-pgsql-scl zabbix-nginx-conf-scl -y 
+systemctl start postgresql && systemctl enable postgresql
+chmod 777 /home/vagrant/
+
+sudo -u postgres createuser --pwprompt zabbix
+sudo -u postgres createdb -O zabbix zabbix
+
+zcat /usr/share/doc/zabbix-server-pgsql*/create.sql.gz | sudo -u zabbix psql zabbix
+
+vi /etc/zabbix/zabbix_server.conf
+    DBPassword=password 
+
+
+поправить файлы
+vi /etc/opt/rh/rh-nginx116/nginx/conf.d/zabbix.conf
+    Раскомментировать и поправить
+        listen 80 default_server;
+        listen [::]:80 localhost.localdomain;
+
+vi /etc/opt/rh/rh-nginx116/nginx/nginx.conf 
+    Сделать просто 
+        listen 80;
+        listen [::]:80; 
+
+vi /etc/opt/rh/rh-php72/php-fpm.d/zabbix.conf
+
+systemctl restart zabbix-server zabbix-agent rh-nginx116-nginx rh-php72-php-fpm
+systemctl enable zabbix-server zabbix-agent rh-nginx116-nginx rh-php72-php-fpm
+
+
+## vi /var/lib/pgsql/data/pg_hba.conf
+host    all all 0.0.0.0/0
+
+psql -h 192.168.0.15 -U usersql
+psql -h 127.0.0.1 -W k-U usersql
+
+zabbix_login: Admin/zabbix
+
+Дополнительно 
+pgadmin3 - gui

@@ -1,0 +1,37 @@
+IPA
+\cp /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+
+yum install chrony
+systemctl enable chronyd
+systemctl start chronyd
+
+hostnamectl set-hostname ipa-server.dmosk.local
+
+firewall-cmd --permanent --add-port=53/{tcp,udp} --add-port=80/tcp --add-port=88/{tcp,udp} --add-port=123/udp --add-port=389/tcp --add-port=443/tcp --add-port=464/{tcp,udp} --add-port=636/tcp
+firewall-cmd --reload
+
+yum install ipa-server ipa-server-dns
+ipa-server-install
+  Do you want to configure integrated DNS (BIND)? [no]: yes
+  Directory Manager password:
+  Password (confirm):
+  IPA admin password:
+  Password (confirm):
+  Do you want to configure DNS forwarders? [yes]:
+  Do you want to configure these servers as DNS forwarders? [yes]:
+  Enter an IP address for a DNS forwarder, or press Enter to skip: 8.8.8.8
+  Do you want to search for missing reverse zones? [yes]
+  Continue to configure the system with these values? [no]: yes
+
+
+kinit admin
+klist
+
+CLIENT
+systemctl restart network || systemctl restart networking
+
+yum install freeipa-client
+apt-get install freeipa-client
+ipa-client-install --mkhomedir
+
+  User authorized to enroll computers: admin

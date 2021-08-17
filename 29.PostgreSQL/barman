@@ -1,0 +1,44 @@
+yum install barman
+yum update barman
+
+
+/etc/yum.repos.d/pgdg-*.repo
+exclude=barman*
+
+/etc/barman.conf
+/etc/barman.d
+
+man 5 barman
+
+Examples of configuration
+  [barman]
+  barman_user = barman
+  configuration_files_directory = /etc/barman.d
+  barman_home = /var/lib/barman
+  log_file = /var/log/barman/barman.log
+  log_level = INFO
+  compression = gzip
+
+  [streaming-pg]
+  description =  "Example of PostgreSQL Database (Streaming-Only)"
+  conninfo = host=pg user=barman dbname=postgres
+  streaming_conninfo = host=pg user=streaming_barman
+  backup_method = postgres
+  streaming_archiver = on
+  slot_name = barman
+
+  [ssh-pg]
+  description =  "Example of PostgreSQL Database (via Ssh)"
+  ssh_command = ssh postgres@pg
+  conninfo = host=pg user=barman dbname=postgres
+  backup_method = rsync
+  parallel_jobs = 1
+  reuse_backup = link
+  archiver = on
+
+
+Создание пользователя, будет запрошен пароль, который нужно будет поместить в ~barman/.pgpass, в виде `hostname:port:database:username:password`
+  postgres@pg$ createuser -s -P barman
+
+Вывод следующей команды понадобится для диррективы `conninfo` (пример: conninfo = host=pg user=barman dbname=postgres)
+  psql -c 'SELECT version()' -U barman -h pg postgres

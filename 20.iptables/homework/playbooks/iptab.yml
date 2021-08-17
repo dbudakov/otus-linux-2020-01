@@ -1,0 +1,34 @@
+- name: "deploy centralServer"
+  hosts: centralServer
+  gather_facts: false
+  become: true
+  roles:
+    - role: roles
+
+  tasks:
+    # cначала ставится nginx потом отрубается маршрут в интернет
+    - include: ../roles/tasks/{{ inventory_hostname }}_nginx.yml
+    - include: ../roles/tasks/{{ inventory_hostname }}.yml
+
+  handlers:
+    - include: ../roles/handlers/start_nginx.yml
+    - include: ../roles/handlers/reload_nginx.yml
+    - include: ../roles/handlers/restart_router.yml
+
+- name: "deploy centralRouter"
+  hosts:
+    - centralRouter
+    - inetRouter
+    - inetRouter2
+  gather_facts: false
+  become: true
+  roles:
+    - role: roles
+  tasks:
+    - include: ../roles/tasks/{{ inventory_hostname }}.yml
+    - include: ../roles/tasks/{{ inventory_hostname }}_var.yml
+    - include: ../roles/tasks/restart_network.yml
+  handlers:
+    - include: ../roles/handlers/restart_router.yml
+    - include: ../roles/handlers/restart_iptables.yml
+    - include: ../roles/handlers/restart_sshd.yml

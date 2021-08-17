@@ -1,0 +1,10 @@
+---
+- name: "#### DEFROUTE=no >> eth0  #####"
+  shell: echo DEFROUTE=no >> {{ eth_00 }}
+  notify: restart router
+
+- name: "##### set forwarding - true #####"
+  sysctl:
+    name: "{{ sysctl_name }}"
+    value: "1"
+    sysctl_set: yes

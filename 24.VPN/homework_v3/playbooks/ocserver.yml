@@ -1,0 +1,8 @@
+- name: deploy
+  hosts: server
+  gather_facts: false
+  become: true
+  roles:
+    - role: roles
+  tasks:
+    - include: ../roles/tasks/{{ inventory_hostname }}.yml

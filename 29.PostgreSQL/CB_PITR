@@ -1,0 +1,23 @@
+CB/PITR
+
+Continuous Backup / Point in Time Recovery
+
+Существует возможность восстановить систему в любое состояние
+
+Для этого
+    организуется Continuous Backup
+    var.1: с помощью archive_command откладывать логи
+    var.2: с помощью pg_receivewal(pg_receivaxlog до 10) сделать слейв
+
+Можно вручную задать точку восстановления функцией
+    pg_create_restore_point('label_name')
+
+После чего в recovery.conf прописывается один из вариатнов настройки recovery_target:
+    recovery_target= 'immediate' - восстанавливаемся до чекпоинтаа и всё
+    recovery_target_name = 'label' - восстанавливаемя до метки из pg_start backup() или pg_create_restore_point()
+    recovery_target_time = <время> - восстановление на момент во времени
+    recovery_target_xid = восстановление до определенной транзакции
+    recovery_target_lsn = восстановление до определенного номера лога
+
+https://www.postgresql.org/docs/9.4/static/functions-admin.html
+https://www.postgresql.org/docs/current/static/recovery-target-settings.html

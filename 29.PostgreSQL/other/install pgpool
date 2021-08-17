@@ -1,0 +1,56 @@
+    1  systemctl start pgpool-II-11.service
+    2  systemctl status pgpool-II-11.service
+    3  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+    4  ls /var/run/pgpool-II-11/
+    5  touch /var/run/pgpool-II-11/pgpool.pid
+    6  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+    7  chmod 777 /var/run/pgpool-II-11/pgpool.pid
+    8  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+    9  ps aux|grep pgpool
+   10  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+   11  systemctl status pgpool-II-11.service
+   12  vi /usr/lib/systemd/system/pgpool-II-11.service
+   13  mv /var/run/pgpool-II-11 /var/run/pgpool/
+   14  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+   15  cp /etc/pgpool-II-11/pgpool.conf.sample  /etc/pgpool-II-11/pgpool.conf
+   16  vi /etc/pgpool-II-11/pgpool.conf
+   17  cp /etc/pgpool-II-11/pool_hba.conf.sample  /etc/pgpool-II-11/pool_hba.conf
+   18  vi /etc/pgpool-II-11/pool_hba.conf
+   19  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+   20  mv /var/run/pgpoo{l,l-II-11}
+   21  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+   22  ps aux |grep pgpoo
+   23  ps aux |grep pgpool
+   24* systemctl start pgpoo
+   25  history
+   26  systemctl status pgpool-II-11.service
+   27  systemctl stop pgpool-II-11.service
+   28  systemctl status pgpool-II-11.service
+   29  systemctl start pgpool-II-11.service
+   30  systemctl status pgpool-II-11.service
+   31  systemctl status pgpool-II-11.service  -l
+   32  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+   33  #rm /var/run/pgpool-II-11/pgpool.pid
+   34  ps aux|grep pgpool
+   35  rm /var/run/pgpool-II-11/pgpool.pid
+   36  /usr/pgpool-11/bin/pgpool -f /etc/pgpool-II-11/pgpool.conf $OPTS
+   37  ps aux|grep pgpool
+   38  kill  kill 23850
+   39  kill  kill 23850
+   40  ps aux|grep pgpool
+   41  ps aux|grep pgpool
+   42  kill  kill 23848
+   43  kill  kill 23848
+   44  ps aux|grep pgpool
+   45  systemctl status pgpool-II-11.service  -l
+   46  systemctl start pgpool-II-11.service
+   47  systemctl status pgpool-II-11.service  -l
+   48  systemctl stop pgpool-II-11.service  -l
+   49  systemctl status pgpool-II-11.service  -l
+   50  clear
+   51  systemctl status pgpool-II-11.service  -l
+   52  cler
+   53  clea
+   54  clear
+   55  histrory
+   56  history

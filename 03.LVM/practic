@@ -1,0 +1,12 @@
+объединение двух линукс систем  
+grub-mkconfig -o /boot/grub/grub.cfg  
+grub-mkconfig /boot/grub/grub.cfg /dev/sda  
+Добавить опцию --class os --unrestricted в строку menuentry требуемой ОС в конфиге загрузчика /boot/grub/grub.cfg  
+
+
+Дополнительно
+drbddrbd  
+drbddrbd + corosync + pacemaker   
+
+мы использовали таблицу разделов типа gpt, но можно выбрать одну из этих: aix, amiga, bsd, dvh, gpt_sync_mbr, gpt, mac, msdos, pc98, sun, loop
+

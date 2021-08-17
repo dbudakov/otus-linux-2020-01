@@ -1,0 +1,282 @@
+При построение баз всегда отталкиваются от требования к соотношению скорость/надежность(взаимоисключающие параметры)
+По аналогии pg_bouncer(или HAProxy) для pgsql в mysql используется SQLProxy
+
+Конфигурационный файл
+  more /etc/my.cnf
+  ls /etc/my.cnf.d/
+
+% - используется как *
+Отображение таблиц
+  в консоли: построчное и через \G;
+  в mysql_workbanch
+картезианское произведение - множество где все строки связаны со всеми строками
+
+
+pmm - percona monitoring management
+
+Основной каталог
+  /var/lib/mysql/
+
+help show
+show databases; - список баз
+use mysql - переход в базу mysql
+show tables; - список таблиц
+select * from user\G;
+
+Узнать пароль root
+  grep -i password /var/log/mysqld.log |awk '{print $NF}'
+
+Использование пароля для входа
+  more .my.cnf
+  [client]
+  password="Suto19#Otus"
+
+Движки
+  show engines;
+  show plugins;
+    MEMORY - таблицý в памяти
+    MRG_MYISAM - объединение идентичных MYISAM таблиц (вариация партиøионирования)
+    InnoDB - ACID (Atomicity(атомарность), Consistency(консистентность), Isolation(изолированность), Durability(долговечность,надежность)) совместимое, (Percona-XtraDB)
+             главное свойство - если транзакция была закоммичена, данный должны быть восстановлены.
+    BLACKHOLE /dev/null - все что вы сюда пишите - исчезает
+    MyISAM - базовый тип хранилища MySQL, не обрабатывает транзакции
+    PERFORMANCE_SCHEMA - для хранения отчетов о производительности
+    ARCHIVE - сжатые данные для быстрой вставки и выборки
+    CSV - хранение в csv файлах
+    FEDERATED - ссýлка на таблиøý в другом MySQL сервере
+    NDB - кластер
+
+
+24:30 плагин для полурепликации
+
+Транзакция
+  desc saldo; - description таблицы
+  select * from billing.saldo limit 10; -
+  update saldo set rest=rest-100 where account_id=101; - проведение обновления (транзакции)
+  select * from biling.saldo limit 10; - увидим что он id 101 отнялось 100
+  update saldo set rest=rest+100 where account_id=102;
+
+  start tansaction; - в случае аварийного завершения, 100 вернется обратно на счет.
+  update saldo set rest=rest-100 where account_id=101; - проведение обновления (транзакции)
+  rollback; - отмена всех(!) операций внутри транзакции.
+  commit; - завершении транзакции.
+
+  undo/redo - также
+
+  изоляция транзакций
+  таймаут транзакции
+  сейвпойнты для частичного отката транзакций
+      SAVEPOINT identifier
+    ROLLBACK [WORK] TO [SAVEPOINT] identifier
+    RELEASE SAVEPOINT identifier
+
+Управление процессами
+  show processlist;
+  kill 447;
+
+Деадлок - убивается один из процессов, другой можно закомитить
+  session1> start transaction;
+  session2> start transaction;
+  session1>update saldo set rest=rest-100 where saldo_id=1;
+  session2>update saldo set rest=rest+100 where saldo_id=2;
+  session1>update saldo set rest=rest+100 where saldo_id=2;
+  session2>update saldo set rest=rest-100 where saldo_id=1;
+  ERROR 1213(40001): Deadlock...
+
+
+История создания таблицы
+  show table;
+  show table status;
+  show create table otus_test_myisam;
+
+  CARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci - правила сортировки и хранения, различается ли регист букв, от него очень сильно зависит скоровь работы, скорость выборки, скорость сортироваки.
+
+У БД есть один большой тормоз - диск, размер БД превышает р-р диска, обеспечени надежность, данные на диски расположены для консистентности, а не для скорости выборки. Для увеличения скорости используются кэши.
+Партиционирование - разбиение БД на кучу сегментов или партиций.
+
+perfomance_schema
+  show variables;  - настроечная таблица порядка 500 параметров
+  show variables like '%perf%';
+
+sys - системная информация
+information_schema - вся метаинформация
+  select * from INNODB_TABLES;
+  select * from innodb_lock_waits; - информация о блокировках
+
+ls /var/lib/mesql/otus/
+  .ibd - innodb формат
+  .MYD -
+  .MYI
+  .sdi -
+
+ 1:30 - объяснение записи инфы на диск БД
+
+show variables like '%trx%';
+  первым делом настраивается
+    innodb_buffer_pool_size
+
+ Настройки
+  help set
+  {PERSIST} - изменение настроек
+  {PERSIST_ONLY} - сохранить настройки но не применять для текущенй сессии
+  /var/lib/mysql/auto.cnf - сохранение настроек
+
+Ограничения по ресурсам
+  innodb_buffer_size - ограничение mysql по памяти
+  Если мы выполним, `show variables like '%size%';`(измерение в байтах) мы увидим что везде стоят ограничения и mysql урезан вообще в 0, поэтому нужны параметры с которых нужно начинать
+  `show variables like '%sort%';`
+
+Лог файлы
+  https://blag.programs74.ru/how-to-change-innodb_log_file_size-safely/
+  /var/lib/mysql/ib_logfile{0,1} - файлы логов, являются redo логами для innodb
+  /var/lib/mysql/binlog.0000{39,40} - можно выключить, но в них складывается последовательность insert'ов, update'ов, delet'ов, и с помощью них организуется backup и репликация.
+  `show variables like '%log%';`
+    innodb_flush_log_at_timeout - как сбрасывать лог при таймауте
+    innodb_flush_log_at_trx_timeout - как сбрасывать лог при коммите
+    innodb_log_file_size - размер лога
+    innodb_log_file_in_group - кол-во файлов
+
+    undo tablespace - используются как снепшоты, для отмены
+    redo log - на случай сбоя, если случится сбой, данные будут считаться из redo log
+
+  log_slow_queries - указывает сурверу логировать долгие(медленные) запросы, если база тормозит
+    select variables like '%slow%'; - выдаст slow_query_log_file - /var/lib/mysql/mysql-10-slow.log
+    more /var/lib/mysql/mysql-10-slow.log - здесь будут sql-запросы и тексты, нужно будет делать на них ехplain, вывод нужно будет складывать в файлик и посылать разработчикам
+
+  select variable like '%general%'; - выдаст general_log_file - /var/lib/mesql/mesql-10.log, по умолчанию выключен, но если включить все запросы валяться в этот лог файл
+
+Бинарные логи
+    statemant-based
+      - в лог пишутся SQL - в случае изменения 1000 записей запишется один sql
+    row-based
+      - в лог пишутся строки - в случае изменения 1000 записей запишется 1000 строк
+      - получаются большие логи
+    mixed - используется для сложных sql запросов, который просто так не отработают на slave
+      - для safe стейтментов пишутся SQL
+      - для unsafe - строки
+
+  Опции для управления бинарными логами
+    Размеры кэша в памяти
+      binlog_cache_size
+    формат
+      binlog_format= ROW/STATEMENT/MIXED
+    Шифрование
+      binlog_encryption
+    Реакция на ошибку записи
+      binlog_error_action = ABORT_SERVER/IGNORE_ERROR
+    таймаут хранения в секундах
+      binlog_expire_logs_seconds
+
+Tablespace
+  ROW --> PAGE(8KB) --> Extent(64KB) --> Segment --> Tablespace(leaf/non-leaf)
+
+SQL query
+  Connection thread(формирование запроса) --> Parser(проверка и составление плана выполнения запроса) --> Optimizer(проверка плана и просмотр статистики для поиска дешевого пути) --> Storage engines(обращение к данным)
+
+Файл истории
+  more ~/.mysql_history
+
+  user astore;
+  show table;
+
+Огранизация запроса
+  Проверка плана запроса
+  explain select * from v_get_subcats; - explain показывает план запроса
+  мы увивем что выборка пойдет из 5 таблиц, какой тип связи используется(eq_ref - одиночная выборка, ALL-все данный из таблицы), rows - количество строк, extra - используемые инструменты(filesort, usertemporary - значит используется temporary tablespace)
+
+  Вывод информации в формате json
+  explain format=json select * from v_get_subcats; - explain показывает план запроса
+    в этом выводе основной момент это строки cost- если на каком-то промежутке увеличивается cost, нужно обратить внимание на это
+
+Мониторинг
+  show processlist;
+  show engine innodb status\G; -самая информативная
+    Показывает состояни движка innodb;
+    Отоброжает последние заблокированные транзакции, а также информацию о транзакциях
+  show table status;
+  show variables like '%';
+  show status like '%';
+  mysqladmin ext -ri1|grep Innodb_buffer_pool_reads
+
+Анализ
+  perfomance_schema
+  information_schema
+  sys
+
+Производительность
+  INNODB_BUFFER_POOL_SIZE = 50-80% RAM
+  INNODB_LOG_FILE_SIZE = 50-100MB
+  INNODB_FLUSH_METHOD=O_DIRECT - это про крэши, прямая запись на диск, минуя буферы
+  SYNC_BINLOG=1 (при бэкапах с минимальным гэпом или репликации) 0 - для производитльности
+  LOG_BIN - включается если нужны бэкапы или репликация,
+  Если большое кол-во коннектов
+    INNODB_BUFFER_POOL_INSTANCES - (до 16) для уменьшения конкуренции
+    INNODB_THREAD_CONCURRENCY - ограничение кол-ва одновременных потоков
+  QUERE_CACHE_TYPE= (0/1/2 - off/on/SQL_CACHE)
+  QUERY_CACHE_SIZE
+
+  max_connections
+  table_open_cache
+  table_open_cache_instances
+  Читают и пишут с диска
+    INNODB_READ_IO_THREADS
+    INNODB_WRITE_IO_THREADS
+  Skip_name_resolve - если присутствует ДНС, кэширует кэш
+
+  Sort_buffer_size - для каждой сессии
+  Key_buffer_size - размер памяти для MyISAM индексов
+  Max_join_size - максимальное кол-во строк для обработки
+  log_slow_queries - указывает сурверу логировать долгие(медленные) запросы, если база тормозит
+    select variables like '%slow%'; - выдаст slow_query_log_file - /var/lib/mysql/mysql-10-slow.log
+    more /var/lib/mysql/mysql-10-slow.log - здесь будут sql-запросы и тексты, нужно будет делать на них ехplain, вывод нужно будет складывать в файлик и посылать разработчикам
+  long_query_time
+  Max_allowed_packet
+  Net_read_timeout - таймоут при чтении после чего обрывать коннектов
+  Net_write_timeout - таймоут при записи после чего обрывает коннект
+
+Кодировки
+  Кодировка(characher set) - набор используесых символов
+  Представление(collation) - набор правил для сравнения символов в наборе
+  Может быть задана для
+    сервера
+    базы данных
+    таблиц
+    колонок в таблицы
+  Если изменятся кодировка базы, то кодировка таблиц не меняется, также колонки и таблицы, все раздельно
+  Примеры задания кодировок :
+    SHOW CHARACTER SET LIKE 'latin%';
+    SHOW COLLATION WHERE Charset = 'latin1';
+    show collation; - список кодировок
+
+    CREATE DATABASE db_name CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+
+    SET NAMES utf8 COLLATE utf8_unicode_ci;
+    SET CHARACTER SET utf8;
+
+    character_set_client - кодировка в которой посылается запрос от клиента
+    character_set_connection - кодировка используемая для конвертации пришедшего запроса(statement'a)
+    character_set_results - кодировку, в которую сервер, должен перевести результат перед его отправкой клиенту
+
+    PAD SPACE - игнорирует завершающие пробелы в строке
+    NO PAD - не игрнорирует завершающие пробелы в строке
+
+    Суффиксы кодировок
+      _ai   Accent insensitive
+      _as   Accent sensitive
+      _ci   Case insensitive
+      _cs   Case sensetive
+      _ks   Kana sensitive(восточные языки(китайски японский))
+      _bin  Binary
+
+    show variables like '%char%'; - выведет список char_set
+
+    В конфигурационном файле проставляется так
+      /etc/my.cnf
+      [mysqld]
+      init_connect='SET collation_connection = utf8_unicode_ci'
+      character-set-server = utf8
+      collation-server = utf8_unicode_ci
+
+      [mysql]
+      default-character-set = utf8

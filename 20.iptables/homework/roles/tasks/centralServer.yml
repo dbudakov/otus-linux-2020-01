@@ -1,0 +1,10 @@
+---
+- name: "##### DEFROUTE=no >> eth0 ######"
+  shell: "echo DEFROUTE=no >> {{ eth_00 }}"
+  notify: restart router
+
+- name: "###### eth1 centralServer --> centralRouter ######"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth1_cntr
+    dest: "{{ eth_01 }}"
+  notify: restart router

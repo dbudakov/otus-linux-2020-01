@@ -1,0 +1,37 @@
+- name: Install freeipa-client
+  yum:
+    name: freeipa-client
+    state: present
+
+- name: Restart network
+  systemd:
+    name: network
+    state: restarted
+
+- name: Set hostname
+  shell: |
+    cat<<EOF>>/etc/sysconfig/network-scripts/ifcfg-eth1
+    DNS1=192.168.100.101
+    EOF
+    nmcli con mod "System eth0" ipv4.ignore-auto-dns yes
+    hostnamectl set-hostname ipa-client.dmosk.local
+
+- name: Restart network
+  systemd:
+    name: network
+    state: restarted
+
+- name: Start firewalld
+  systemd:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Set firewalld options
+  shell: |
+    firewall-cmd --permanent --add-port=53/{tcp,udp} --add-port=80/tcp --add-port=88/{tcp,udp} --add-port=123/udp --add-port=389/tcp --add-port=443/tcp --add-port=464/{tcp,udp} --add-port=636/tcp
+    firewall-cmd --reload
+
+- name: ipa-client-install (please wait... )
+  shell: |
+    echo yes | ipa-client-install --mkhomedir -p admin -w 12345678 --force-ntpd

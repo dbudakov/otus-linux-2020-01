@@ -1,0 +1,31 @@
+- name: Create directory conf.d
+  file:
+    path: /vagrant/conf.d/
+    mode: 0755
+    owner: vagrant
+    group: vagrant
+    state: directory
+
+- name: Copy conf.d recursive
+  synchronize:
+    src: ../roles/templates/slave_conf.d/
+    dest: /vagrant/conf.d/
+    recursive: yes
+
+- name: Main shell
+  shell: |
+    yum install https://www.percona.com/redir/downloads/percona-release/redhat/1.0-21/percona-release-1.0-21.noarch.rpm -y
+    yum install Percona-Server-server-57 -y
+
+    cp /vagrant/conf.d/* /etc/my.cnf.d/
+    systemctl enable mysqld && systemctl start mysqld
+
+    echo [client] > /root/.my.cnf
+    echo "password=`grep -i root@localhost /var/log/mysqld.log |awk '{print $NF}'`" >> /root/.my.cnf
+
+    mysql --connect-expired-password -e "ALTER USER USER() IDENTIFIED BY 'P@ssw0rd';"
+    sed -i 's/password/\#password/' /root/.my.cnf
+    echo "password=\"P@ssw0rd\"" >> /root/.my.cnf
+
+    mysql -e "CHANGE MASTER TO MASTER_HOST='192.168.11.150', MASTER_PORT=3306, MASTER_USER='repl', MASTER_PASSWORD='P@ssw0rd1', MASTER_AUTO_POSITION=1;"
+    mysql -e "START SLAVE;"

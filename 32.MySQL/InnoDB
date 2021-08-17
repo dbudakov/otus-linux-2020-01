@@ -1,0 +1,32 @@
+InnoDB
+
+Компоненты в памяти
+  InnoDB buffer pool
+    Кэш для данных таблиц и индексов - поблочный кэш, shared pool-доступ к сессии,
+    До 80% памяти сервера
+    Разделяемая память для всех сессий - к этой памяти имеют доступ все сессии
+    LRU - вытесняемая память
+
+  Change buffer
+    Часть буфер пула и системного тейблспуйса. Кеширует изменения вторичных индексов если они не назодятся в буферном пуле
+
+  Redo log buffer - как часто сбрасывать инфу из памяти на диск
+    изменения еще не сброшенные в редо лог
+    Innodb_log_at_trx_commit (1 по коммиту, 0 - по таймоуту, 2 - оба)
+    innodb_log_at_timeout
+
+Компоненты на диске
+  Системное табличное простанство
+  Основное табличное пространство
+  UNDO табличное пространство - работает как снепшот
+    innodb_undo_tablespace: # of undo tablespaces, dafault 0
+    innodb_undo_derectory: Location for undo tablespace, default is data_dir with 10MB size
+    innodb_undo_logs: # of undo logs, default and max value is '128'
+  Temporary табличное пространство - работает как swap, нужно выпосить на максимально быстрый диск
+    innodb_temp_data_file_path = ibtmp1:12M:autoextend (default)
+  Словарь
+  Буфер двойной записи
+    inndb_doublewrite(default enable)
+  Redo logs - можно указывать что у нас 5 файлов по 100Мб например
+    innodb_log_file_in_group=[# of redo file groups]
+    innodb_log_file_size= [Size for each redo file]

@@ -1,0 +1,51 @@
+proxysql.x86_64
+proxysql2.x86_64
+
+more /etc/proxysql-admin.cnf - скрипт подготавливающий окружение, создает пользователя,
+  CLUSTER_USERNAME - админский логин для коннекта к ProxySQl
+  CLUSTER_PASSWORD - админский пароль для коннекта к ProxySQl
+  PORT = 6032/6033
+
+При таком подключении мы попадаем не в кластер, а в ProxySQL Module
+  mysql -u admin -p admin -h 127.0.0.1 -P 6032 --prompt='Admin>'
+
+show tables - выдаст два вида таблиц mysql_ и runtime_mysql_
+
+ProxySQL может конфигурироваться как через конфиг файл, а может через команды
+
+select * from mysql_galera_hostgroups\G; - некая группа в которую входит несколько хостов
+  writer_hostgroup - указывается номер группы, отправляются все запросы на запись
+  backup_writer_hostgroup - указывается номер группы, резера для серверов writer_hostgroup
+
+select * mysql_servers; - список серверов, первая колонка указывает принадлежность hostgroup'e
+
+select * runtime_mysql_servers; - через mysql_ - настраивается сервер, через runtime_mysql_ - прописывается
+
+Мы можем добавить пользователей в БД и
+  LOAD MYSQL USERS TO RUNTIME;
+  LOAD MYSQL SERVERS TO RUNTIME;
+  SAVE MYSQL USERS TO DISK; - созраняет настройки на диск
+
+select * from mysql_users; - пользователь должен быть и здесь и он в БД находится и ему даны какие-то права
+
+Если мы подключаемся конкретным, настроеным пользователем, то подключаемся к кластеру
+  mysql -u proxysql_user -p fDGw0rd -h 127.0.0.1 -P 6033
+
+Таблицы
+  runtime_mysql_query_rules\G; - правила для query
+    match_digest - вид select
+    destination_hostgroup - в номер какой hostgroups направлять
+
+show variables like 'wsrep%'; - параметры для настройки wsкуздшсфешщт
+show status like 'wsrep%'; - статусы по gallera cluster'у
+show plugins; - wsrep-плагин, который превращает mysql в gallera cluster
+
+Файлы отображающие в каком состоянии находится galera cluster
+  /var/lib/mysql/GRA_1_949.log
+  /var/lib/mysql/GRA_2_26.log
+  /var/lib/mysql/grastate.dat
+  /var/lib/mysql/gvwstate.dat
+
+
+Параметры настройки взаимодействия и скорости взаимодействия, показаны таймауты
+  show variables like 'wsrep_provider_options';

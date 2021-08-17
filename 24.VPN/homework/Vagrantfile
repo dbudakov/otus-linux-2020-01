@@ -1,0 +1,32 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+ config.vm.box = "centos/7"
+ 
+ config.vm.define "server" do |client|
+    client.vm.hostname = "server.loc"
+    client.vm.network "private_network", ip: "192.168.10.10"
+    client.vm.provider "virtualbox" do |vb|
+        vb.name = "server"
+    end
+ end
+ 
+ config.vm.define "client" do |client|
+    client.vm.hostname = "client.loc"
+    client.vm.network "private_network", ip: "192.168.10.20"
+    client.vm.provider "virtualbox" do |vb|
+        vb.name = "client"
+    end
+ end
+
+ config.vm.provider "virtualbox" do |vb|
+	vb.memory = 256
+ end
+ 
+ config.vm.provision "ansible" do |ansible|
+            #ansible.verbose = "vv"
+            ansible.playbook = "playbooks/tun_tap.yml"
+            ansible.become = "true"
+ end
+end

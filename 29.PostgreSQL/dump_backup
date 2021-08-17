@@ -1,0 +1,26 @@
+backup
+    pg_dump
+    pg_dumpall
+
+restore
+    psql
+    pg_restore
+
+    pg_basebackup
+        pg_basebackup --pgdata=/opt/backup - указываем куда писать бекап
+        echo 'port=5433' >> /opt/backup/postgresql.auto.conf - указываем новый порт
+        pg_ctl -w -l /home/postgres/logfile2 -D /opt/backup start - старт новой системы из бекапа
+
+Снятие dump'a globals 
+    pg_dumpall -U postgres -p 5432 -g > /opt/globals.sql
+    pg_dumpall -U postgres -p 5432 -g| gzip > /opt/globals.sql.gz
+    
+Снятие dump'a database:
+    pg_dump -U postgres -p 5432 db_name > /opt/db_name.sql
+    pg_dump -U postgres -p 5432 db_name|gzip > /opt/db_name.sql.gz
+    
+Залив dump'ов в базу:
+    psql -U postgres -p 5432 -f /opt/globals.sql
+    gunzip -c9 /opt/globals.sql.gz | psql -U postgres -p 5432 
+    psql -U postgres -p 5432 -f /opt/db_name.sql -d db_name
+    gunzip -c9 /opt/db_name.sql.gz | psql -U postgres -p 5432 -d db_name

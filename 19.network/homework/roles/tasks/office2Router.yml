@@ -1,0 +1,24 @@
+---
+- name: "##### eth1 office2Router --> central #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth1
+    dest: "{{ eth_01 }}"
+  notify: restart router
+
+- name: "##### eth2 office2Router --> dev #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth2
+    dest: "{{ eth_02 }}"
+  notify: restart router
+
+- name: "##### eth3 office2Router --> srv #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth3
+    dest: "{{ eth_03 }}"
+  notify: restart router
+
+- name: "###### eth4 office2Router --> hw #####"
+  template:
+    src: ../roles/templates/{{ inventory_hostname }}/eth4
+    dest: "{{ eth_04 }}"
+  notify: restart router

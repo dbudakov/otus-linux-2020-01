@@ -1,0 +1,97 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby:
+home = ENV['HOME']
+
+MACHINES = {
+  :'inetRouter' => {
+      :box_name => "centos/7",
+  },
+  :'centralRouter' => {
+      :box_name => "centos/7",
+  },
+  :'centralServer' => {
+    :box_name => "centos/7",
+  },
+  :'office1Router' => {
+      :box_name => "centos/7",
+  },
+  :'office1Server' => {
+    :box_name => "centos/7",
+  },
+  :'office2Router' => {
+      :box_name => "centos/7",
+  },
+  :'office2Server' => {
+    :box_name => "centos/7",
+  }
+}
+
+Vagrant.configure("2") do |config|
+
+  MACHINES.each do |boxname, boxconfig|
+
+      config.vm.define boxname do |box|
+
+          box.vm.box = boxconfig[:box_name]
+          box.vm.host_name = boxname.to_s
+
+          box.vm.provider :virtualbox do |vb|
+            vb.customize ["modifyvm", :id, "--memory", "128"]
+            vb.name = boxname.to_s
+            case boxname.to_s
+            when "inetRouter"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "inet_central"]
+            when "centralServer"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "srv0-subnet"]
+            when "centralRouter"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "inet_central"]
+              vb.customize ["modifyvm", :id, "--nic3", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet3", "central_office1"]
+              vb.customize ["modifyvm", :id, "--nic4", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet4", "central_office2"]
+              vb.customize ["modifyvm", :id, "--nic5", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet5", "srv0-subnet"]
+              vb.customize ["modifyvm", :id, "--nic6", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet6", "hw0-subnet"]
+              vb.customize ["modifyvm", :id, "--nic7", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet7", "mgt0-subnet"]
+            when "office1Server"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "srv1-subnet"]
+            when "office1Router"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "central_office1"]
+              vb.customize ["modifyvm", :id, "--nic3", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet3", "dev1-subnet"]
+              vb.customize ["modifyvm", :id, "--nic4", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet4", "srv1-subnet"]
+              vb.customize ["modifyvm", :id, "--nic5", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet5", "mgt1-subnet"]
+              vb.customize ["modifyvm", :id, "--nic6", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet6", "hw1-subnet"]
+            when "office2Server"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "srv2-subnet"]
+            when "office2Router"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "central_office2"]
+              vb.customize ["modifyvm", :id, "--nic3", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet3", "dev2-subnet"]
+              vb.customize ["modifyvm", :id, "--nic4", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet4", "srv2-subnet"]
+              vb.customize ["modifyvm", :id, "--nic6", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet3", "hw2-subnet"]
+            end
+	        end
+          box.vm.provision "ansible" do |ansible|
+            #ansible.verbose = "vv"
+            #ansible.playbook = "provision/playbook.yml"
+            ansible.playbook = "playbooks/test.yml"
+            ansible.become = "true"
+          end
+        end
+    end
+end

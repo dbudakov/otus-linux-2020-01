@@ -1,0 +1,53 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby:
+home = ENV['HOME']
+
+MACHINES = {
+  :'r1' => {
+      :box_name => "centos/7",
+  },
+  :'r2' => {
+      :box_name => "centos/7",
+  },
+  :'r3' => {
+      :box_name => "centos/7",
+  }
+}
+
+Vagrant.configure("2") do |config|
+
+  MACHINES.each do |boxname, boxconfig|
+
+        config.vm.define boxname do |box|
+
+          box.vm.box = boxconfig[:box_name]
+          box.vm.host_name = boxname.to_s
+
+          box.vm.provider :virtualbox do |vb|
+            vb.customize ["modifyvm", :id, "--memory", "256"]
+            vb.name = boxname.to_s
+            case boxname.to_s
+            when "r1"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "alpha"]
+              vb.customize ["modifyvm", :id, "--nic3", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet3", "gamma"]
+            when "r2"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "alpha"]
+              vb.customize ["modifyvm", :id, "--nic3", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet3", "beta"]
+            when "r3"
+              vb.customize ["modifyvm", :id, "--nic2", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet2", "beta"]
+              vb.customize ["modifyvm", :id, "--nic3", "intnet"]
+              vb.customize ["modifyvm", :id, "--intnet3", "gamma"]
+	          end
+	        end
+	      box.vm.provision "ansible" do |ansible|
+          ansible.playbook = "playbooks/ospf.yml"
+          ansible.become = "true"
+	      end
+      end
+    end
+end

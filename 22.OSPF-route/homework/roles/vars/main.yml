@@ -1,0 +1,16 @@
+---
+# vars file for roles
+route_conf:
+  - zebra.conf
+  - Quagga.conf
+  - ospfd.conf
+
+utilities:
+  - quagga
+  - tcpdump
+
+rp_filters:
+  - net.ipv4.conf.all.rp_filter
+  - net.ipv4.conf.eth0.rp_filter
+  - net.ipv4.conf.eth1.rp_filter
+  - net.ipv4.conf.eth2.rp_filter

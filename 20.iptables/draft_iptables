@@ -1,0 +1,242 @@
+Запуск команды из истории
+  !118
+
+iptables:
+  Показать только нужный фрагмент:
+    iptables -L IN_public_allow -n -v
+
+iptables -L -n -t filter -v # показывает колонки - pkts[packages] bytes
+iptables-save               # выгрузка таблиц
+/etc/sysconfig/iptables     # по дефолту нет, файл для загрузки правил
+
+Жизнь пакета в iptables:
+  https://github.com/dbudakov/20.iptables/blob/master/iptables_process_flow.jpg
+
+Таблицы:
+  raw       # изначальная обработка, до conntrack
+    chain: PREROUTING,OUTPUT
+    action: NOTRACK,CT,DROP
+
+  mangle    # модификация заголовков(tos,mss,ttl), маркировки и классификации пакетов
+    chain: PREROUTING, INPUT, FORWARD, OUTPUT, POSTROUTING
+    action: TTL,TOS,MARK/CONNMARK,CLASSIFY,TPROXY,TCPMSS
+      пример флага:
+      iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+      iptables -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 128
+      пример маркировки, тегирование трафика:
+      iptables -A PREROUTING -i eth1 -t mangle -p tcp --dport 25 -j MARK --set-mark 1 # устанавливаем mark 1, для порта 25/tcp на eth1
+      echo 201 mail.out >> etc/iproute[2]/rt_tables  # создаем новую таблицу
+      ip rule add fwmark 1 table mail.out # задаем правило, для всех пакетов с маркой 1, роут через табл mail.out
+      ip rule ls
+      ip route add default via 195.96.98.253 dev ppp0 table mail.out  # прописываем роутинг для таблицы mail.out
+
+  nat       # трансляция адресов
+    сhain:  PREROUTING,INPUT,OUTPUT,POSTROUTING
+    action: SNAT/MASQUERADE,DNAT,REDIRECT
+      пример реверс прокси на др адрес:
+      *nat
+      :PREROUTING ACCEPT [578:36692]
+      :POSTROUTING ACCEPT [0:0]
+      :OUTPUT ACCEPT [103:7355]
+##    -A PREROUTING -p tcp -m tcp --dport 25271 -j DNAT --to-destination 5.5.5.5:25171 # назначение нового адреса для 25271/tcp
+      -A POSTROUTING -j MASQUERADE # все что мы подменяли при отправлении, изменится в обратную сторону
+      COMMIT
+
+  filter    # основная таблица, фильтры
+    chain:  INPUT,FORWARD,OUTPUT
+    action: ACCEPT,REJECT,DROP
+
+  security  # работа с SELinux
+    chain: INPUT,FORWARD,OUTPUT
+    action: SECMARK/CONNSECMARK
+
+    ACTION:
+      CLASSIFY - классифицировать пакет для обработки в шейпере(control trafic)
+      CT - настроить работу с модулем conntrack
+      DNAT - Destination NAT
+      MARK/CONNMARK - установить метку(fwmark) пакета/соединения
+      NOTRACK - отключить conntrack для пакетов попадающих в правило
+      REDIRECT - подмена dst_ip:dst_port на свои собственные(частный случай DNAT)
+      SNAT/MASQUERADE - Source NAT
+      SECMARK/CONNSECMARK - установить SELinux context для пакета/соединения
+      TCPMSS - позволяет изменять значение MSS в TCP SYN пакетах, для контроля максимального размера пакетов в этом соединении
+      TOS - используется для установки разрядов в поле Type of Service заголовка ip
+      TPROXY - прозрачный прокси на локальный порт
+      TTL - установить ttl
+
+
+
+
+
+
+Policy(политика) устанавливается для каждой цепочки в таблице, и означает набор действий по дефолту/по итогу
+
+Таблицы работают по терминирующему правилу, при ACCEPT одной из строк, пакет дальше не проверяется
+
+Можно настраивать jump между цепочками
+
+iptables -F # flush
+
+
+
+Цели:
+## T/terminated - остальные правила после этого правила не рассматриваются
+  ACCEPT      T принять пакет
+  DROP        T отбросить пакет, без ответов
+  REJECT      T отбросить пакет и сообщить об этом источнику
+  RETURN      T вернуть в выше стоящую цепочку или применить правило поумолчанию
+  LOG         N
+  chain_name  N перейти в цепочку <chain_name>
+  DNAT        T Dectination NAT
+  SNAT        T Source NAT
+  MASQUERADE  T Source NAT для динамически-конфигурируемых интерфейсов
+  SET           Добавление/удаление адреса в ipset
+  ##
+
+
+Вставка правила в цепочку(по умолчанию первая строка):
+  iptables -I IN_public_allow -j DROP # сессия при подключении по ssh будет висеть, без отклика
+  iptables -I IN_public_allow -j REJECT # выдаст отлуп при подключении
+Добавлениe  в конец цепочки:
+  iptables -A IN_public_allow -j DROP
+
+Удаление правила из цепочки:
+  iptables -D IN_public_allow -j DROP
+
+  также для удаления правил можно использовать нужную строку из вывода "iptables-save"
+
+Вывод номеров для правил:
+  iptables -L -n -v --line-numbers
+
+Сброс счётчиков пакетов для "iptables -L -n -v"
+  iptables -Z
+
+Критерии срабатывания можно увидеть выводом:
+  iptables-save
+  ---Здесь:
+  -A IN_public_allow -p tcp -m tcp --dport 22 -m conntrack -ctstate NEW,UNTRACKED -m limit --limit 3/min -j ACCEPT
+    -A IN_public_allow - добавление в цепочку
+    -p tcp - указание протокола
+    -m tcp --dport 22 - [--match], наличие критерия для срабатывания
+    -m conntrack --ctstate NEN,UNTRACKED # проверяет наличие соединения, ходит в /proc/net/nf_conntrack и если соединения нет, начинает с ним работать, чем больше записей в файлике nf_conntrack тем дольше он будет их проверять
+                 --ctstate [--contrack state]
+
+  другие критерии срабатывания для L3:
+    -i/--in-interface   # входящий интерфейс
+    -o/--out-interface  # исходящий интерфейс
+    -s/--source         # адрес источника
+    -d/--destination    # адрес назначения
+    -p/--protocol       # ip-protocon(tcp,udp,icmp...)
+    -f/--fragment       # является ли фрагментом(2+ в серии)
+
+  другие критерии срабатывания для L4:
+    TCP/UDP
+      --sport port[:port] # порт или диапазон портов источника
+      --dport port[:port] # порт или диапазон портов назначения
+    TCP
+      --tcp-flag mask flags (SYN,ACK,RST,FIN SYN) # флаги tcp
+      --syn                                       # взведённый syn
+    ICMP
+      --icmp-type   # тип icmp пакета
+
+  дополнительные модули срабатывания
+    conntrack     # состояние соединения
+    multiport     # по списку портов, а не по диапазону
+    iprange       # использование ip-range(50-60), вместо cidr-префикса(маска подсети)
+    mark/connmark # маркировка пакета/соединения
+    set           # использование ipset
+    u32           # использование заголовков и отдельных битов ip пакета
+    mac           #  испольозвание mac адреса
+    limit         # кол-во пакетов в ед-цу времени(ex. 10/hour)
+        iptables -A INPUT -p tcp --syn --dport 22 -m connlimit --connlimit-above -j REJECT # пропускает все что выше двух,connlimit, ограничение соединений с одного адреса
+        тип REJECT назначается в --reject-with <type> (man iptables-extensions)
+
+        iptables -A INPUT -p tcp --syn --dport 22 -m connlimit --connlimit-upto -j ACCEPT # пропускает до двух
+        relimit, ограничение частоты срабанывания правила, применяется в связке с действием LOG
+          --limit <limit>/unit(second,minute,hour,day)
+          --limit-burst - максимальный всплеск пакетов
+    addrtype      # тип адресации(UNICAST,MULTICAST,BROADCAST)
+
+БАЛАНСИРОВКА:
+  Каждый третий пакет отправля на др. адрес, подходит для сбора метрик, но в более объемных запросах пакеты одного запроса могут разъехаться по разным адресам
+  iptables -A PREROUTING -p tcp --dport 80 -m nth --every 3 --packet 0 -j DNAT --to-destination 10.0.0.4
+  iptables -A PREROUTING -p tcp --dport 80 -m nth --every 3 --packet 1 -j DNAT --to-destination 10.0.0.4
+  iptables -A PREROUTING -p tcp --dport 80 -m nth --every 3 --packet 2 -j DNAT --to-destination 10.0.0.6
+
+  Клонирование трафика:
+    iptables -t mangle -A POSTROUTING -d 192.168.3.219 -p udp --dport 1812 -j TEE --gateway 192.168.3.241
+
+  Защита от syn_flood
+    iptables -N syn_flood
+    iptables -A INPUT -p tcp --syn -j syn_flood # jump в цепочку syn_floog
+    iptables -A syn_flood -m limit --limit 1/s --limit-burst 3 -j RETURN  #RETURN означает возврат в верхнестоящее правило
+    iptables -A syn_flood -j DROP
+
+  лимит поступающих icmp ping request
+    iptables -A INPUT -p icmp -m limit --limit 1/s --limit-burst 1 -j ACCEPT
+  логирование события опцией LOG,в syslog с префиксом PING-DROP
+    iptables -A INPUT -p icmp -m limit --limit 1/s --limit-burst 1 -j LOG --log-prefix PING-DROP:
+    iptables -A INPUT -p icmp -j DROP
+  ###
+    iptables -A OUTPUT -p icmp -j ACCEPT
+
+  не больше 10 подлючений за 10 минут
+    SERVER_IP=192.168.10.20
+
+## ДЗ
+    iptables -I INPUT -p tcp -s 0/0 -d $SERVER_IP --sport 513:65535 -dport 22 -m state --state NEW,ESTABLISHED -m recent --set -j ACCEPT # заносит к себе в память
+
+## ДЗ
+  iptables -I INPUT -p tcp -dport 22 -m state --state NEW -m recent --update --seconds 600 --hitcount 11 -j DROP
+
+##
+  Iptables -A OUTPUT -p tcp -s $SERVER_IP -d 0/0 --sport 22 --dport 513:65535 -m state --state ESTABLISHED -j ACCEPT
+
+
+состояния соединений:
+  NEW         # новое соединение
+  ESTABLISHED # установленное соединение
+  RELATED     # относящиеся к другому
+  INVALID     # пакеты с неопознанной принадлежностью к соединениям
+
+  правило для строк с ESTABLISHED соединением можно посмотреть
+    iptables -L INPUT -n -v
+
+  conntrack смотрить только tcp пакеты на состояние ESTABLISHED, для udp такого состояния нет
+
+man iptablex-extensions - все --match для правил iptables
+conntrack -L # список
+conntrack -F # очистка таблицы /proc/net/nf_conntrack
+conntrack --help
+sysctl -a|grep conntrack_tcp_timeout # таймауты соединений
+
+ipset
+  наборы ip адресов
+  hash - использует hash таблицу для хранения
+    hash:net - несколько масок, VLSM(Variable Length Subnet Mask 0-32)
+    hash:ip  - список сетей с одинаковой длиной маски
+  bitmap - использует bitmap для хранения (max 65536 записей)
+    bitmap:ip,mac - 8 байт на запись
+    bitmap:ip - 1 bit на адрес
+  list:set - списки списков
+
+  ipset list otuset
+  ipset flush otuset
+  ipset destroy otuset
+  ipset create otuset bitmap:ip,mac range 192.168.0.0/16
+  ipset add otuset 192.168.254.2,08:00:27:b2:b9:ab
+  ipset test otuset 192.168.254.2,08:00:27:b2:b9:ab
+  ## man iptables ; /--match-set setname /--add-set
+
+
+
+
+
+
+
+Дополнительная информация:
+навести спарвки про
+  симетричный и асиметричный NAT
+  ALG
+  sysctl -a|grep rp_filter # асинхронная маршрутизация
+  cisco IOS, GNS, GNS3, packet tracer

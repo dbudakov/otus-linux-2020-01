@@ -1,0 +1,18 @@
+rpm -ivh https://repo.zabbix.com/zabbix/5.0/rhel/7/x86_64/zabbix-release-5.0-1.el7.noarch.rpm
+yum-config-manager --enable rhel-7-server-optional-rpms
+
+yum install zabbix-server-mysql
+yum install zabbix-proxy-mysql.
+
+>_oiljbF9,ut
+
+Если выдал ошибку то в файле /etc/mysql/mysql.conf.d/mysqld.cnf в секцию [mysqld] добавить строчкуskip-grant-tables и выполнить sudo service mysql restart
+или в файле /etc/my.cnf
+
+yum install postgresql-server -y
+postgresql-setup initdb
+systemctl start postgresql
+
+Jun  1 10:43:10 localhost postgresql-check-db-dir: "/var/lib/pgsql/data" is missing or empty.
+Jun  1 10:43:10 localhost postgresql-check-db-dir: Use "postgresql-setup initdb" to initialize the database cluster.
+Jun  1 10:43:10 localhost postgresql-check-db-dir: See /usr/share/doc/postgresql-9.2.24/README.rpm-dist for more information.

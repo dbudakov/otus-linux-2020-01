@@ -1,0 +1,66 @@
+yum install https://www.percona.com/redir/downloads/percona-release/redhat/1.0-21/percona-release-1.0-21.noarch.rpm -y
+yum install Percona-Server-server-57 -y
+
+cp /vagrant/conf/conf.d/* /etc/my.cnf.d/
+systemctl start mysql
+grep -i root@localhost /var/log/mysqld.log |awk '{print $NF}'
+mysql -uroot -p
+
+
+
+ALTER USER USER() IDENTIFIED BY 'P@ssw0rd';
+SELECT @@server_id;
+SHOW VARIABLES LIKE 'gtid_mode';
+CREATE DATABASE bet;
+mysql -uroot -p -D bet < /vagrant/bet.dmp
+
+USE bet;
+SHOW TABLES;
+
+Создания пользователя для репликации и наделение правами для неё.
+  CREATE USER 'repl'@'%' IDENTIFIED BY '!OtusLinux2018';
+  SELECT user,host FROM mysql.user where user='repl';
+  GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%' IDENTIFIED BY '!OtusLinux2018';
+
+#Дампим базу для слейва
+#mysqldump --all-databases --triggers --routines --master-data --ignore-table=bet.events_on_demand --ignore-table=bet.v_same_event -uroot -p > master.sql
+#
+#Копируем дамп на слейв
+#  scp ./master.sql root@192.168.11.151:/vagrant
+
+## SLAVE
+vi /etc/ssh/sshd_config
+  systemctl restart sshd
+  yum install https://www.percona.com/redir/downloads/percona-release/redhat/1.0-21/percona-release-1.0-21.noarch.rpm -y
+  yum install Percona-Server-server-57 -y
+  cp /vagrant/conf/conf.d/* /etc/my.cnf.d/
+  vi /etc/my.cnf.d/01-base.cnf
+  systemctl start mysql
+  grep -i root@localhost /var/log/mysqld.log |awk '{print $NF}'
+  mysql -u root -p
+  ALTER USER USER() IDENTIFIED BY 'P@ssw0rd';
+Раскомментировать последние строки
+  vi /etc/my.cnf.d/05-binlog.cnf
+  SOURCE /vagrant/master.sql
+  SHOW DATABASES LIKE 'bet';
+  SHOW TABLES;
+  CHANGE MASTER TO MASTER_HOST = "192.168.11.150", MASTER_PORT = 3306, MASTER_USER = "repl", MASTER_PASSWORD = "!OtusLinux2018", MASTER_AUTO_POSITION = 1;
+  START SLAVE;
+  SHOW SLAVE STATUS\G
+
+
+## MASTER
+  USE bet;
+  INSERT INTO bookmaker (id,bookmaker_name) VALUES(1,'1xbet');
+  SELECT * FROM bookmaker;
+
+## SLAVE
+  USE bet;
+  SELECT * FROM bookmaker;
+
+https://www.abhinavbit.com/2019/05/gtid-replication-skip-transaction-using.html
+  !Slave_IO_Running: Yes
+  !Slave_SQL_Running: No
+
+ SET GTID_NEXT="126b58c7-c6a8-11ea-9d39-5254004d77d3:38";
+ SET GTID NEXT="126b58c7-c6a8-11ea-9d39-5254004d77d3:79";

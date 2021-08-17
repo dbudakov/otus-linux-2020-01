@@ -1,0 +1,27 @@
+- name:
+  include_vars: 
+    file: ../roles/vars/{{ inventory_hostname }}.yml
+
+- name:
+  template:
+    src: ../templates/epel.repo
+    dest: /etc/yum.repos.d/epel.repo
+
+- name:
+  yum:
+    name: "{{ packages }} "
+    state: present
+
+- name:
+  shell: echo pass |sudo ocpasswd -c /etc/ocserv/ocpasswd test
+
+- name: 
+  template:
+    src: ../templates/ocserv.conf
+    dest: /etc/ocserv/ocserv.conf
+
+- name:
+  systemd:
+    name: ocserv
+    state:  started
+    enabled: true

@@ -1,0 +1,39 @@
+- name:
+  shell: |
+    hostnamectl set-hostname ipa-server.dmosk.local
+
+- name: Start firewalld
+  systemd:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Set firewalld options
+  shell: |
+    firewall-cmd --permanent --add-port=53/{tcp,udp} --add-port=80/tcp --add-port=88/{tcp,udp} --add-port=123/udp --add-port=389/tcp --add-port=443/tcp --add-port=464/{tcp,udp} --add-port=636/tcp
+    firewall-cmd --reload
+
+- name: Insall packages
+  yum:
+    name:
+      - ipa-server
+      - ipa-server-dns
+    state: present
+
+- name: Install FreeIPA(please wait)
+  shell: |
+    echo yes|ipa-server-install \
+    --hostname=ipa-server.dmosk.local \
+    --domain=dmosk.local \
+    --realm=DMOSK.LOCAL \
+    --ds-password=12345678 \
+    --admin-password=12345678 \
+    --ip-address=192.168.100.101 \
+    --setup-dns \
+    --forwarder=10.0.2.3 \
+    --reverse-zone=100.168.192.in-addr.arpa.
+
+- name: Add user
+  shell: |
+    echo 12345678 | kinit admin
+    echo 12345678 | ipa user-add user --first=user --last=user --password

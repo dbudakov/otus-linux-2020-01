@@ -1,0 +1,59 @@
+cat /etc/nsswitch.conf - настройки nss, порядок проверки файлов
+
+Клиентская часть устанавливается на каждый хост, иначе не будет взаимодействия с доменом.
+
+Устанавливается полное доменное имя
+  hostnamectl set-hostname ipaserver.otus.lan
+
+Запуск сервера
+  ipa-server-install - по сути является пошаговым помошником
+  1.Do yoy want to configure integrated DNS (BIND)?  yes
+    Нужно ли использовать DNS вместе с FreelPA
+  2. Server host name [ipaserver.otus.lan]
+  3. Please confirm the domain name [otus.lan]
+  4. Please provide a realm name [OTUS.LAN]
+  5. Directory manager password:
+    Тот кто заведует информацией в каталоге
+  6. IPA admin password
+    Админ это пользователь, который получает доступ ко всем возможностям FreelPA
+  7. Do you want to configure DNS forwarders? yes
+  8. Do you want to configure these servers as DNS forwarders? yes
+  9. ALL DNS servers from in /etc/resolv.conf were added. Tou can enter additional address now:
+  10. Enter an IP address for a DNS forwarder, or press Enter to skip:
+  11. Do you want to search for midding reverse zones: yes
+  12. Do you want to create reverse zone for IP 10.0.2.15: yes
+  13. Please specify the reverse zone name 2.0.10.in-addr.arpa.
+  14. Do you want to create reverse zone for IP 192.168.11.250: yes
+  15. Please specify the reverse zone name 11.168.192.in-addr.arpa.
+  16. Using reverse zone(s) 2.0.10.in-addr.arpa., 11.168.192.in-addr.arpa.
+  17. Continue to configure the system with these values: yes
+
+Этапы настройки и конфиги
+  OpenLDAP Clietn
+    /etc/openldap/ldap.conf
+  SSSD(System Security Services Daemon  )
+    /etc/sssd/sssd.conf
+  PAM
+    /etc/pam.d/password-auth
+    /etc/pam.d/system-auth
+  SSH
+    /etc/ssh/sshd_config
+  nsswitch
+    /etc/nsswitch.conf
+  oddjob
+    /etc/oddjobd.confd
+    /etc/oddjobd.conf.d/oddjobd-mkhomedir.conf
+
+Client
+  echo 'nameserver 192.168.11.250' > /etc/resolv.conf
+  hostnamectl set-hostname ipaclient.otus.ru
+    host ipasever.otus.lan
+  ipa-client-install
+  1. User authorized to enroll conputers: admin
+    Ввод пользователя под которым вводим компьютер в домен
+
+host> ssh admin@ipaclient.otus.ru
+Cообщения по попыткам доступа:
+  tail /var/log/secure
+
+  curl https:\\ipaserver.otus.lan

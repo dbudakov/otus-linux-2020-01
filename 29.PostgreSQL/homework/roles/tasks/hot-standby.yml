@@ -1,0 +1,125 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: Adding users
+  user:
+    name: postgres
+    state: present
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+
+- name: Get file id_rsa.pub
+  fetch:
+    src: /home/postgres/.ssh/id_rsa.pub
+    dest: ../roles/templates/keys
+
+- name: Install repo PostgreSQL
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: Install PostgreSQL
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+- name: Disable check known_hosts
+  shell: echo StrictHostKeyChecking=no >> /etc/ssh/ssh_config
+
+- name: Enable ssh PasswordAuthentication
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name:
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: Copy pg:id_rsa in hot-standby:authorized_keys
+  template:
+    src: ../roles/templates/keys/pg/home/postgres/.ssh/id_rsa.pub
+    dest: /home/postgres/.ssh/authorized_keys
+
+- name:
+  shell: |
+    chmod 700 /home/postgres/.ssh
+    chown postgres:postgres /home/postgres/.ssh/authorized_keys
+    chmod 600 /home/postgres/.ssh/authorized_keys
+    sshpass -p "postgres" scp /home/postgres/.ssh/id_rsa.pub postgres@192.168.100.101:/home/postgres/.ssh/authorized_keys
+
+- name: Create data for standby
+  shell: |
+    sshpass -p "postgres" ssh postgres@192.168.100.101 "psql -c \"SELECT pg_start_backup('stream');"\";
+    sshpass -p "postgres" ssh postgres@192.168.100.101 "rsync -a /var/lib/pgsql/11/data/ 192.168.100.102:/var/lib/pgsql/11/data/ --exclude postmaster.pid";
+    sshpass -p "postgres" ssh postgres@192.168.100.101 "psql -c \"SELECT pg_stop_backup();"\";
+
+- name: hot_standby on
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#hot_standby = on"
+    replace: "hot_standby = on"
+
+- name: Change file ownership, group and permissions
+  file:
+    path: /var/lib/pgsql/11/data/recovery.conf
+    owner: postgres
+    group: postgres
+    mode: "0644"
+    state: touch
+
+- name: set recovery.conf
+  blockinfile:
+    path: /var/lib/pgsql/11/data/recovery.conf
+    block: |
+      standby_mode = 'on'
+      primary_conninfo = 'host=192.168.100.101 port=5432 user=postgres'
+      trigger_file = 'failover'
+
+- name: Started pgsql
+  systemd:
+    name: postgresql-11
+    enabled: yes
+    state: started
+
+- name: Create /usr/lib64/pgsql
+  file:
+    path: /usr/lib64/pgsql
+    state: directory
+    mode: 0755
+
+- name: Copy pgpool-walrecrunning.so
+  template:
+    src: ../../roles/templates/all/pgpool-walrecrunning.so
+    dest: /usr/lib64/pgsql/pgpool-walrecrunning.so
+
+- name: Copy pgpool-walrecrunning.sql
+  template:
+    src: ../../roles/templates/all/pgpool-walrecrunning.sql
+    dest: /usr/share/pgsql/pgpool-walrecrunning.sql
+
+- name: Configure postgresql.conf for barman
+  shell: |
+    sshpass -p "postgres" ssh postgres@192.168.100.101 "cat<<EOF >> /var/lib/pgsql/11/data/postgresql.conf
+    archive_mode = on
+    archive_command = 'rsync -a %p barman@192.168.100.104:/var/lib/barman/pg-db-server/incoming/%f'
+    EOF"
+    sshpass -p "vagrant" ssh root@192.168.100.101 "systemctl restart postgresql-11.service"
+
+#- name: Configure postgresql.conf for barman
+#  replace:
+#    path: /var/lib/pgsql/11/data/postgresql.conf
+#    regexp: "#archive_mode = off"
+#    replace: "archive_mode = on"
+#  notify: restarted_pgsql
+
+#- name: Configure postgresql.conf for barman
+#  replace:
+#    path: /var/lib/pgsql/11/data/postgresql.conf
+#    regexp: "#archive_command = ''"
+#    replace: "archive_command = 'rsync -a %p barman@192.168.100.104:/%f'"
+#  notify: restarted_pgsql

@@ -1,0 +1,8 @@
+---
+# vars file for roles/nginx
+ansible_user: vagrant
+ansible_ssh_private_key_file: ./.vagrant/machines/{{ inventory_hostname }}/virtualbox/private_key
+
+## Config nginx
+nginx_port: 8080
+nginx_repo_path: /etc/yum.repos.d/nginx.repo

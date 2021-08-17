@@ -1,0 +1,33 @@
+LDAP
+  - https://pro-ldap.ru/tr/admin24/intro.html
+
+Схемы LDAP
+  - https://pro-ldap.ru/tr/zytrax/ch3/
+  - https://ldap.com/understanding-ldap-schema/
+
+  Объектные классы
+    - https://pro-ldap.ru/tr/zytrax/ch3/#objectclasses
+    - https://ldap.com/object-classes/
+
+  Типы атрибутов
+    - https://pro-ldap.ru/tr/zytrax/ch3/#attributes
+    - https://ldap.com/attribute-types/
+
+  Синтаксисы атрибутов
+    - https://ldap.com/attribute-syntaxes/
+
+  Парвила соответствия
+    - https://pro-ldap.ru/tr/zytrax/ch3/#matchingrules
+    - https://ldap.com/matching-rules/
+
+  LDAP Data Interchange Format
+    - https://ru.wikipedia.org/wiki/LDIF
+
+  Инструменты для работы с LDAP
+    - https://pro-ldap.ru/tr/zytrax/apb/#toolshttps://pro-ldap.ru/tr/zytrax/apb/#tools
+
+  Установка FreeIPA на CentOS
+    https://www.dmosk.ru/miniinstruktions.php?mini=freeipa-centos
+
+  FreeIPA в контейнере
+    https://m.habr.com/ru/post/254233/

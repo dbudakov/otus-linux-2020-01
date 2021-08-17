@@ -1,0 +1,33 @@
+FreelPA
+  готовое решение, от RHEL, сочетающее в себе
+    - Сервер LDAP с предустановленными схемами
+    - Сервер Kerberos KDC/Key Distribution Center
+    - Сервер DNS (BIND) с хранением зон в LDAP
+    - CA / Certificate Authority / Центр сертификации
+    - Сервер NTP (ntpd)
+    - Web-консоль управления(apache/httpd)
+
+Установка FreelPA
+  Сервер:
+    yum install ipa-server ipa-server-dns
+    ipa-server-install
+
+  Клиент:
+    yum install ipa-client
+    ipa-client-install --mkhomedir
+
+Минимальные требования
+  - Сервер:
+      - 2048MB RAM
+      - hostname в формате FQDN
+  - Клиент:
+      - DNS, знающий про IPA server(IP IPA server, за редкими исключениями)
+      - hostname в формате FQDN
+  - Ports:
+      - TCP Ports:
+        - *80,443   :HTTP/HTTPS
+        - *389,636  :LDAP/LDAPS
+        - *88,464   :kerberos
+      - UDP Ports:
+        - *88,464   :kerberos
+        - *123      :ntp

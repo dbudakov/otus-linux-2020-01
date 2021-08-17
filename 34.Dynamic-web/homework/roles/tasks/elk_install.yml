@@ -1,0 +1,98 @@
+- name: Add Elactecsearch repository
+  shell: |
+    rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    cat<<EOF>/etc/yum.repos.d/elasticsearch.repo
+    [elasticsearch]
+    name=Elasticsearch repository for 7.x packages
+    baseurl=https://artifacts.elastic.co/packages/7.x/yum
+    gpgcheck=1
+    gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    enabled=1
+    autorefresh=1
+    type=rpm-md
+    EOF
+
+- name: Add kibana repository
+  shell: |
+    cat<<EOF>>/etc/yum.repos.d/elasticsearch.repo
+    [kibana-7.x]
+    name=Kibana repository for 7.x packages
+    baseurl=https://artifacts.elastic.co/packages/7.x/yum
+    gpgcheck=1
+    gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+    enabled=1
+    autorefresh=1
+    type=rpm-md
+    EOF
+
+- name: Install epel-repo
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install packages
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - setools
+    - setroubleshoot-server
+    - nginx
+    - wget
+    - java-1.8.0-openjdk.x86_64
+
+- name: Install Elasticsearch
+  yum:
+    name: elasticsearch
+    state: present
+
+- name: Install Kibana
+  yum:
+    name: kibana
+    state: present
+
+- name: Configure nginx
+  shell: |
+    cat<<EOF>/etc/nginx/conf.d/site_kibana.conf
+    server {
+        listen 82;
+
+        server_name kibana_example.su www.kibana_example.su;
+
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/htpasswd.users;
+
+        location / {
+            proxy_pass http://localhost:5601;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host \$host;
+            proxy_cache_bypass \$http_upgrade;
+        }
+    }
+    EOF
+    echo "kibanaadmin:`openssl passwd -apr1 P@ssw0rd`" | sudo tee -a /etc/nginx/htpasswd.users
+
+- name: Prestart nginx for SELinux
+  shell: |
+    systemctl restart nginx
+  ignore_errors: True
+
+- name: Configure SELinux
+  shell: |
+    sudo setsebool -P httpd_can_network_connect 1
+    ausearch -c 'nginx' --raw | audit2allow -M my-nginx
+    semodule -i my-nginx.pp
+    rm -f ./my-nginx.pp; > /var/log/audit/audit.log
+  ignore_errors: True
+
+- name: start service
+  shell: |
+    sudo /bin/systemctl daemon-reload
+    systemctl enable elasticsearch.service;systemctl start elasticsearch.service
+    systemctl enable kibana.service;sudo systemctl start kibana.service
+    systemctl enable nginx; systemctl restart nginx
+
+# Используется для утилиты certbot(создание ssl сертификатов)
+# yum install -y perl-Digest-SHA-5.85-4.el7.x86_64

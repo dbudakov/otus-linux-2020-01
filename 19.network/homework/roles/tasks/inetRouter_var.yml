@@ -1,0 +1,21 @@
+---
+- name: "##### POSTROUTING inetRouter #####"
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    destination: "! 192.0.0.0/16"
+    out_interface: eth0
+    jump: MASQUERADE
+  become: yes
+
+- name: "##### install iptables-service #####"
+  yum:
+    name: iptables-services
+    state: present
+  notify:
+    - restart iptables
+
+- name: "##### save iptables #####"
+  shell: iptables-save > /etc/sysconfig/iptables
+  notify:
+    - restart iptables

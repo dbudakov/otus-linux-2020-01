@@ -1,0 +1,54 @@
+#- name:
+#  shell: setenforce 0
+
+- name:
+  include_vars: 
+    file: ../roles/vars/all.yml
+
+- name:
+  template:
+    src: ../templates/epel.repo
+    dest: /etc/yum.repos.d/epel.repo
+
+- name:
+  yum:
+    name: "{{ packages }} "
+    state: present
+ 
+- name:
+  stat: path=/etc/openvpn/static.key
+  register: st
+
+- name:
+  shell: openvpn --genkey --secret /etc/openvpn/static.key
+  when: not st.stat.exists
+
+- name: Get file from remote
+  fetch:
+   src: /etc/openvpn/static.key
+   dest: ../roles/templates/
+
+- name:
+  file:
+    path: /etc/openvpn/server.conf
+    mode: '0600'
+    state: touch
+  
+- name:
+  blockinfile:
+    path: /etc/openvpn/server.conf
+    block: |
+      dev tap
+      ifconfig 10.10.10.1 255.255.255.0
+      topology subnet
+      secret /etc/openvpn/static.key
+      comp-lzo
+      status /var/log/openvpn-status.log
+      log /var/log/openvpn.log
+      verb 3
+
+- name:
+  systemd:
+    name: openvpn@server
+    state: started
+    enabled: true

@@ -1,0 +1,75 @@
+### Percona Monitoring and Management  
+# https://dinfratechsource.com/2018/11/10/percona-monitoring-management-pmm-essentials/
+
+
+## SERVER
+# Настройка docker
+firewall-cmd --zone=public --add-service=mysql --permanent
+firewall-cmd --zone=public --add-port=3306/tcp --permanent
+firewall-cmd --zone=public --add-port=3306/udp --permanent
+firewall-cmd --zone=public --add-port=80/tcp --permanent
+firewall-cmd --zone=public --add-port=80/udp --permanent
+firewall-cmd --zone=public --add-port=8080/tcp --permanent
+firewall-cmd --zone=public --add-port=8080/udp --permanent
+firewall-cmd --zone=public --add-port=42000/tcp --permanent
+firewall-cmd --zone=public --add-port=42000/udp --permanent
+
+# Отключение SELinux
+sed -i 's/enforcing/permissive/' /etc/sysconfig/selinux
+
+# Установка и запуск docker
+yum -y install docker && systemctl enable docker && systemctl start docker
+
+# Создание docker контейнера
+docker create \
+-v /opt/prometheus/data \
+-v /opt/consul-data \
+-v /var/lib/mysql \
+-v /var/lib/grafana \
+--name pmm-data \
+percona/pmm-server:latest /bin/true
+
+# Запуск docker контейнера
+docker run -d \
+-p 80:80 \
+--volumes-from pmm-data \
+--name pmm-server \
+--restart always \
+percona/pmm-server:latest
+
+# После чего pmm сервис становится доступен из вне по ip-адресу виртуальной машины, внутри виртуалки он доступен по адресу контейнера
+curl http://172.17.0.2/ping
+
+# хостовая машина будет моноториться без установки клиента, но всё же, установка pmm-client и добавление хоста на мониторинг
+sudo yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+sudo yum -y install pmm-client
+pmm-admin config --server 172.17.0.2
+pmm-admin info
+
+
+## CLIENT
+# Добавление клиента на мониторинг
+sudo yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+sudo yum -y install pmm-client
+pmm-admin config --server 192.168.100.101
+pmm-admin add linux:metrics
+
+## Добавление mysql на мониторинг
+# Установка и запуск MySQL
+yum install https://www.percona.com/redir/downloads/percona-release/redhat/1.0-21/percona-release-1.0-21.noarch.rpm -y
+yum install Percona-Server-server-57 -y
+systemctl enable mysqld && systemctl start mysqld
+
+# Запись и смена пароль для автоматизации входа
+echo [client] > /root/.my.cnf
+echo "password=`grep -i root@localhost /var/log/mysqld.log |awk '{print $NF}'`" >> /root/.my.cnf
+mysql --connect-expired-password -e "ALTER USER USER() IDENTIFIED BY 'P@ssw0rd';"
+sed -i 's/password/\#password/' /root/.my.cnf
+echo "password=\"P@ssw0rd\"" >> /root/.my.cnf
+
+# Создание и наделение правами пользователя mysql
+mysql -e "GRANT SELECT, PROCESS, SUPER, REPLICATION CLIENT, RELOAD ON *.* TO 'pmmuser'@'192.168.100.101' IDENTIFIED BY 'P@ssw0rd' WITH MAX_USER_CONNECTIONS 10;"
+mysql -e "GRANT SELECT, UPDATE, DELETE, DROP ON performance_schema.* TO 'pmmuser'@'192.168.100.101'";
+
+# Постановка на мониторинг
+pmm-admin add mysql || pmm-admin add mysql --user pmmuser --password P@ssw0rd --host 192.168.100.102 --port 3306

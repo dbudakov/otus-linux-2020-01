@@ -1,0 +1,50 @@
+wireguard
+
+Установка в CentOS
+  curl -Lo /etc/yum.repos.d/wireguard.repo
+  https://copr.fedorainfracloud.org/coprs/jdoss/wireguard/repo/epel-7/jdoss-wireguard-epel-7.repo
+  yum makecache
+  yum install epel-release -y
+  yum install wireguard-dkms wireguard-tools -y
+
+Генерация ключей:
+  # можно запустить, чтобы не ругался генератор ключа: umask 077
+  генерирует privatekey, publickey
+    we genkey | tee privatekey| we pubkey > publickey
+
+Настройка сервера:
+  ## /etc/wireguard/wg0.conf
+  [Interface]
+  Address = 10.64.20.1/24 # тунельная сеть и ip который будет на нем
+  PostUp - iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE # скрипт запуска интерфейса
+  PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D  OSTROUTING -o eth1 -j MASQUERADE # скрипт выключения интерфейса
+  ListenPort = 51820 # порт на котором будет слушать сервер
+  PrivateKey = <server private key>
+
+  [Peer] # клиент, на сервере описывается клиент который будет подключаться
+  PublicKey =  <client public key>
+  Endpoint = 172.16.20.22:51821 # хост и порт,нужно указываеть
+  #AllowedIPs = 0.0.0.0/0
+  AllowedIPs = 10.64.20.0/24 # сеть которую мы планируем в наш туннель заворачивать
+
+Настройка клиента:
+  ## /etc/wireguard/wg0.conf
+  [Interface]
+  PrivateKey = <server private key>
+  Address = 10.64.20.1/24
+  ListenPort = 51821
+  #Table=wire # позволяет выделить отдельную таблицу iproute2, для того чтобы трафик роутить через неё
+
+  [Peer]
+  PublicKey =  <client public key>
+  Endpoint = 172.16.20.22:51820
+  AllowedIPs = 0.0.0.0/0
+  #AllowedIPs = 10.64.20.0/24
+  PersistentKeepalive = 30 # автоматическое переподключение
+
+Запуск сервера:
+  wg-quick up wg0
+  systemctl enable wg-quick@wg0
+
+Запуск клиента:
+  wg-quick up wg0

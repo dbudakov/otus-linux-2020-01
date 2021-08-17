@@ -1,0 +1,4 @@
+all:
+  hosts:
+    office2Server:
+      ansible_port:

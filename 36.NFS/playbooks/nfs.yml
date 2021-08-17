@@ -1,0 +1,15 @@
+- name: "deploy homework"
+  hosts:
+    - zabbix
+  gather_facts: false
+  become: true
+#  roles:
+#    - role: roles
+#  tasks:
+#    - include: ../roles/tasks/{{ inventory_hostname }}.yml
+#  handlers:
+#    - include: ../roles/handlers/all_handlers.yml
+
+#  tasks:
+#  - name:
+#    shell: |

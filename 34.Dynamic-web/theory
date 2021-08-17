@@ -1,0 +1,39 @@
+theory
+devtools
+  https://developers.google.com/web/tools/chrome-devtools/network/reference?utm_source=devtools#timing-explanation
+
+Включение модуля сжатия страниц для nginx
+  /etc/nginx/sites-avalible/ticket2ride.systemctl.su
+    server {
+            listen 443 ssl;
+            listen [::]:443 ssl;
+      access_log *
+      error_log  *
+            server_name ticket2ride.sysctel.su;
+        gzip on;
+        gzip_min_length 1000;
+      gzip_disable "msie6";
+      # указываются те типы которые мы хотим сжимать /etc/nginx/mime.types(список типов)
+      gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript application/javascript;
+
+            ssl_certificate
+            ssl_certificate_key
+            ssl_trusted_certificate
+
+            location /{}
+
+    }
+Посмотреть список скомпилированных модулей
+  nginx -V
+
+/etc/opt/rh/rh-nginx116/nginx/nginx.conf
+  worker_processes auto; - не нужно задавать больше чем ядер на хосте
+  events{
+    worker_connections 1024; - указывается сколько подключений держит каждый воркер
+  }
+
+Дополнительно
+Инструмент для нагрузочного тестирования nginx
+  yandex tank
+
+CGI(Common Gateway Interface) - стандарт интерфейса, используемого для связи внешней программы с веб-сервером

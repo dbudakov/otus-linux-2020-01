@@ -1,0 +1,106 @@
+# ELK
+
+### Install and settings ELK
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/rpm.html
+
+### Curl команды по elasticksearch
+# https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-elasticsearch-on-centos-7#:~:text=Download%20it%20in%20a%20directory,rpm%20%2Divh%20elasticsearch%2D1.7.
+
+
+### install tar.gz
+# yum install -y wget perl-Digest-SHA-5.85-4.el7.x86_64 java-1.8.0-openjdk.x86_64
+# wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.8.0-linux-x86_64.tar.gz
+# wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.8.0-linux-x86_64.tar.gz.sha512
+# shasum -a 512 -c elasticsearch-7.8.0-linux-x86_64.tar.gz.sha512
+# tar -xzf elasticsearch-7.8.0-linux-x86_64.tar.gz
+# cd elasticsearch-7.8.0/
+
+### install rpm
+# yum install -y wget perl-Digest-SHA-5.85-4.el7.x86_64 java-1.8.0-openjdk.x86_64
+# wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.8.0-x86_64.rpm
+# wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.8.0-x86_64.rpm.sha512
+# shasum -a 512 -c elasticsearch-7.8.0-x86_64.rpm.sha512
+# sudo rpm --install elasticsearch-7.8.0-x86_64.rpm
+
+### install of repo
+yum install -y wget java-1.8.0-openjdk.x86_64
+rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+cat<<EOF>/etc/yum.repos.d/elasticsearch.repo
+[elasticsearch]
+name=Elasticsearch repository for 7.x packages
+baseurl=https://artifacts.elastic.co/packages/7.x/yum
+gpgcheck=1
+gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+enabled=0
+autorefresh=1
+type=rpm-md
+
+EOF
+yum install -y --enablerepo=elasticsearch elasticsearch
+systemctl daemon-reload
+systemctl enable elasticsearch.service
+systemctl start elasticsearch.service
+
+## Check info elasticksearch
+curl -X GET 'http://localhost:9200'
+
+# Kibana
+
+## Install Kibana
+# https://www.elastic.co/guide/en/kibana/current/rpm.html
+
+### Install Kibana of repo
+
+yum install -y wget perl-Digest-SHA-5.85-4.el7.x86_64 java-1.8.0-openjdk.x86_64
+cat<<EOF>>/etc/yum.repos.d/elasticsearch.repo
+[kibana-7.x]
+name=Kibana repository for 7.x packages
+baseurl=https://artifacts.elastic.co/packages/7.x/yum
+gpgcheck=1
+gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+enabled=1
+autorefresh=1
+type=rpm-md
+
+EOF
+yum install kibana -y
+sudo /bin/systemctl daemon-reload
+sudo /bin/systemctl enable kibana.service
+sudo systemctl start kibana.service
+
+## Install NGINX for proxy
+# https://www.digitalocean.com/community/tutorials/how-to-install-nginx-on-centos-7
+# https://serveradmin.ru/ustanovka-i-nastroyka-elasticsearch-logstash-kibana-elk-stack/#Nastrojka_Kibana
+
+yum install epel-release -y
+yum install nginx -y
+sed -i 's/        listen       80 default_server;/        listen       80;/' /etc/nginx/nginx.conf
+sed -i 's/        listen       \[::\]:80 default_server;/        listen       \[::\]:80;/' /etc/nginx/nginx.conf
+echo "kibanaadmin:`openssl passwd -apr1 P@ssw0rd`" | sudo tee -a /etc/nginx/htpasswd.users
+
+# kibanaadmin/P@ssw0rd
+# kibanaadmin:$apr1$8/hj6Nuj$Dg/h2Jf3o8PBK9Xij0dU.0
+touch /etc/nginx/conf.d/kibana_example.su.conf
+
+cat<<EOF>/etc/nginx/conf.d/kibana_example.su.conf
+server {
+    listen 80;
+
+    server_name kibana_example.su www.kibana_example.su;
+
+    auth_basic "Restricted Access";
+    auth_basic_user_file /etc/nginx/htpasswd.users;
+
+    location / {
+        proxy_pass http://localhost:5601;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+nginx -t
+systemctl start nginx.service
+sudo setsebool httpd_can_network_connect 1 -P

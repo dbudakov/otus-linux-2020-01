@@ -1,0 +1,26 @@
+Утилиты
+
+sysbench(pg_bench) - нагрузочное тестирование
+sysbench --threads=5 --mysql-host=localhost --mysql-user=otus --mysql-password="NewOtus19#" --db-driver=mysql --mysql-db=otus /usr/share/sysbench/oltp_read_write.lua run
+  --threads - количество потоков
+  --db-driver - указание что идет работа с mysql(может быть pgsql)
+  /usr/share/sysbench/ - каталог скриптов для sysbench
+  /usr/share/sysbench/oltp_read_write.lua - указание скрипта
+  run - выполнени куска скрипта(без этого параметра будет выведен список доступных директив - prepare, prewarm, run, cleanup, help)
+        prepare - подготавливает нужные нам таблицы
+        prewarm - прочитывает таблицы в innodb_buffer
+        run - запускает и показывает как работает наша логика
+В выводе будет указано количесто прочитаных записей, кол-во записей, кол-во выполненных транзакций, затраченное время
+
+Манипуляция на скорость работы и кол-во запросов и транзакций
+  show variables like '%sync%';
+  sync_binlog
+  set global sync_binlog=0;
+
+
+mysqltuner - ставится уже на рабочей базе, производит анализ базы, анализирует статистику собранную по таблицам, по запросам, написана на perl. Выдает рекомендации.
+
+dbweaver - графическая оболочка
+mysqlworkbench - графическая оболочка для mysql
+adminer 4.7.7
+HeidiSQL

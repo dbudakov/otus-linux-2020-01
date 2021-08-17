@@ -1,0 +1,6 @@
+client
+    sudo apt install openconnect
+    sudo openconnect -b vpn.example.com:port-number
+        -b будет запускать клиента  фоновом режиме после установления соединения
+    sudo pkill openconnect
+    sudo apt install network-manager-openconnect network-manager-openconnect-gnome

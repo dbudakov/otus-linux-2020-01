@@ -1,0 +1,4 @@
+all:
+  hosts:
+    inetRouter:
+      ansible_port:

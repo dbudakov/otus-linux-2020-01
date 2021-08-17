@@ -1,0 +1,15 @@
+homework
+1.zabbix,gitlab
+2.graphana
+3.prometeus
+
+nginx 3 virtualhosts
+ports or location(1site,but 3 location)
+
+ghost 3.0 - javascript https://ghost.org
+shuup - python https://github.com/shuup/shuup
+rundeck  https://www.rundeck.com/open-source
+argoproj https://github.com/argoproj/argo-cd
+gocd  https://www.gocd.org
+youtrack https://www.jetbrains.com/ru-ru/youtrack
+graphana

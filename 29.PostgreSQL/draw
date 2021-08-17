@@ -1,0 +1,196 @@
+\l - список баз
+\dt - список таблиц
+\d <table> - описание таблицы
+\? - справка
+
+Можно использовать файл pgpass(/home/$USER/.pgpass) и переменную окружения PGUSER для автоматического входа в систему
+
+Строка заключенная в двойные кавычки - отсылка к именам системных объектов(поля, таблицы)
+строка в одинарных кавычках - строковая константа
+    select * from "employee" where "employee_name"='elina';
+
+
+draw
+Схема - логическое объединение таблиц в базе данных
+База данных - физическое объединение таблиц
+Кластер - объединение нескольких баз данных в одной РСУБД
+
+
+После установки postgresql
+    yum install postgresql
+служба не запустится
+    systemctl start postgresql
+Обращая внимание на юнит postgres, можно увидить
+    ExecStart=/usr/bin/pg_ctl start -D ${PGDATA} -s -o "-p ${PGPORT}" -w -t 300
+именно параметр $PGDATA не дает её запустить, выше указано её значение, но можно и посмотреть из консоли
+    Environment=PGDATA=/var/lib/pgsql/data
+но дирректории /var/lib/pgsql/data изначально нет
+
+необходимо инициализировать базу с нуля
+    postgresql-setup initdb
+    pg_ctl
+    /usr/pgsql-11(12)/bin/postgresql-11-setup initdb
+    systectl start postgresql
+
+    в процессе инициализации происходит инициализация дерева файлов, создание базовых таблиц template0 и template1
+    template0 - read only база данных, содержащая инициализационный набор данных
+    template1 - база-шаблон для создания новых баз
+    Кодировка может быть установлена для отдельной базы
+        su postgres -c '/usr/pgsql-10/bin/initdb -E UTF8 --locale ru_RU.UTF-8 -D /var/lib/pgsql/10/data'
+
+
+
+
+ls - /var/lib/pgsql/data
+base/
+global/
+pg_clog         - транзакции
+pg_hba.conf
+pg_ident.conf
+pg_log/
+pg_multixact/
+pg_notify/
+pg_serial/
+pg_snapshots/
+pg_stat_tmp/
+pg_subtrans/
+pg_tblspc/
+pg_twophase
+PG_VERSION
+pg_xlog
+postgresql.conf
+
+ps axjf|grep postgres
+/usr/bin/postgres -D /var/bin/post
+
+
+pg_hba.conf - задает способ доступа
+    trust - не проверять доступ
+    md5 - проверка по логину-паролю
+    peer - сопоставление с пользователем системы(только локально)
+    Также имеется поддержка pam,ldap,ssl cert,radius, но пользователь должен существовать в postgresql
+
+Директория продукта:
+    /usr/pgsql-<version>
+
+клиентские утилиты вынесены силинками в
+    /usr/bin
+
+Основная директория - домашняя для пользователя postgres
+    /var/lib/pgsql
+
+Директория текущей версии
+    /var/lib/pgsql/<version>/data - PGDATA для текущей версии
+
+Для обновления используется утилита
+    pg_upgrade
+Обновление мажорных версии рекомендуется делать через полный dump/restore, для чего рядом ставится новая версия с отдельной иерархией
+
+
+Узкие места:
+    На каждое соединение запускается отдельный процесс (backend)
+    С другими процессами он общается через shared memory
+    В некоторых случаях спасает дополнительный софт - pgpool
+
+    MVCC организован таким образом(в отличии от др РСУБД), что записи не меняются и не удаляются
+    У каждого тупла(tuple) есть системные поля `xmin` (id транзакции создавшей запись) и `xmax`(id транзакции изменившей или удалившей запись), таким образом создается некоторое окно видимости
+        Для удаления записей существует процесс autovacuum
+        Долговисящие транзакции мешают vacuum process и база разрастается
+
+    wraparound, или обнуление счетчика транзакций. По условиям, не должно существовать в системе транзакций с номерами, отстающими на боле, чем maxint32/2-1. При несоблюдении этого условия база останавливается. Решение - postgres pro, с 64-битными транзакциями
+
+GUC-Global Unified Configuration
+        Подсистема конфигурации Postgres, которая собирает все источники конфигурации воедино, отображая её в системной таблице, pg_settings.
+        Параметры могут быть заданы в
+            параметрах командной строки основного демона postgres(-c name=value)
+            переменных окружения (PGDATA,etc)
+            postgres.conf
+            postgres.auto.conf(результат работы оператора ALTER SYSTEM, 9.4+)
+    В pg_settings можно увидеть откуда параметр применился, какие значения по-умолчанию, можно ли поменять на лету, в каких единицах считается и краткое объяснение
+
+Надёжность
+    В WAL(write ahead log,pg_xlog(<10) или pg_wal(10+)) записываются все изменения перед ответом клиенту об успешной транзакции
+    bgweiter время от времени проходит по `shared memory` и сбрасывает данные в таблицы, помечаю сохраненные страницы, как "чистые"
+    checkpointer запоминает минимальный id текущих транзакций и начинает сбрасывать данные в файлы.
+    По завершению процедуры номер транзакции попадает в т.н. control data.
+    Чекпоинт инициируется по времени, либо вручную командой CHECKPOINT
+    При восстановлении после сбоя номер транзакции из control data(чекпойнта) ищется в WAL и начиная с этой записи WAL накладывается на файлы базы. Таким образом организуется консистентность
+    Информация о control data
+        /usr/pgsql-11/bin/pg_controldata -D /var/lib/pgsql/11/data
+
+Основные параметры
+    shared_buffers - от 1/8 до 1/2 всей памяти
+    effective_cache_size - на какой объем системного кеша может рассчитывать планировщик запросов
+        RAM - work_mem * max_connections - shared_buffers
+    max_connections - максимальное число подключений, каждое из которых может расходовать
+    work_mem - память для сессии, 32..128М. Это рекомендательное значение для планировщика, а не жесткое ограничени
+    maintaenance_work_mem - память для checkpointer, autovacuum, etc. 1/32..1/16 RAM или 256MB..4GB
+    temp_buffers - для каждой сессии под временные таблицы, 32Mb
+    efective_io_concurrency - 1-один диск, 2-RAID10
+    random_page_cost - 1.5..2 для RAID10, 1.1..1.3-для SSD
+    fsync и autovacuum ДОЛЖНЫ БЫТЬ ВКЛЮЧЕНЫ ВСЕГДА!!!
+
+
+Бекап(backup)
+    https://www.pgbarman.org/
+
+    pg_start_backup ('label') - создание чекпоинта, запись состояния и даты бекапа
+    копирование файлов
+    pg_stop_backup() - создание ового сегмента WAL
+    копировани WAL
+    Проблема: WAL может отротироваться. Решение: откладывать логи заранее с помощью настройки archive_command
+
+Восстановление из бекапа
+    разворачивание файлового бекапа
+    создание recovery.conf в каталоге PGDATA, в котором
+        restore_command - откуда брать файлы WAL. Файлы можно положить сразу
+        archive_cleanup_command - что делать с "отработанными" файлами WAL, есть штатная утилита `pg_archivecleanup`, но можно и свё вписать
+
+pg_basebackup
+    Утилита для создания консистентного бекапа, умеет забирать нужные файлы с сервера и забирать WAL по протоколу репликации
+    В базовой конфигурации сервера, всегда надо сразу конфигурировать мастер на репликацию
+
+Мониторинг
+    https://github.com/postgrespro/mamonsu
+    http://repo.postgrespro.ru/pgpro-11/
+
+    pg_stat_activity
+    pg_database
+    pg_class
+    CREATE EXTENSION pg_visibility;
+        pg_visibility_map
+    SELECT txid_current();
+
+
+
+
+
+
+
+
+
+
+
+
+source:
+https://ruhighload.com/
+https://github.com/dataegret/pg-utils/tree/master/pql - статы postgres
+
+Ванильная сборка (PGDG, PostgreSQL Global Development Group):
+    http://yum.postgresql.org, http://apt.postgresql.org
+    https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+Postgres Professional
+    http://repo.postgrespro.ru/
+
+2nd Quadrant Postgres-XL
+    https://www.postgres-xl.org/
+
+Утилиты управления:
+    pgAdmin III, pgAdmin 4 - в официальных репозиториях
+    OmniDB (2nd Quadrant) https://github.com/OmniDB/OmniDB
+    DBeaver https://dbeaver.io/
+
+Дополнительно:
+    https://www.postgresql.org/docs/current/static/libpq-envars.html
+    https://www.postgresql.org/docs/current/static/app-postgres.html

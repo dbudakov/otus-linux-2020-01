@@ -1,0 +1,8 @@
+---
+# Start nginx after install
+
+- name: start nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: true
