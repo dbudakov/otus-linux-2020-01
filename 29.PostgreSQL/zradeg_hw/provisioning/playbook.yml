@@ -1,0 +1,172 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: set timezone
+    file: src=/usr/share/zoneinfo/Europe/Moscow path=/etc/localtime force=yes
+
+  - name: add names to hosts
+    lineinfile:
+      dest: /etc/hosts
+      line: '{{ item }}'
+    with_items:
+      - '192.168.11.20   pgmaster'
+      - '192.168.11.21   pgslave'
+      - '192.168.11.22   barman'
+
+  - name: install postgresql & epel-release repositories
+    yum:
+      name:
+        - 'https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-42.0-11.noarch.rpm'
+        - epel-release
+      state: present
+
+  - name: get barman repository
+    get_url: url=https://dl.2ndquadrant.com/default/release/get/11/rpm dest=/usr/src/barman_repo_installer.sh mode=0544
+
+  - name: install barman repo
+    command: /usr/src/barman_repo_installer.sh
+
+  - name: install packages
+    yum:
+      name:
+        - vim
+        - mc
+        - tcpdump
+        #- "python-psycopg2.x86_64"
+      state: present
+
+- hosts: pgmaster
+  become: yes
+  tasks:
+  - name: install packages
+    yum:
+      name:
+        - postgresql11-server
+        - barman
+        - barman-cli
+
+  - name: postgresql initdb
+    command: /usr/pgsql-11/bin/postgresql-11-setup initdb
+
+  - name: prepare place for id_rsa
+    file: dest=/var/lib/pgsql/.ssh state=directory owner=postgres group=postgres
+
+  - name: copy id_rsa
+    copy: src=pgmaster/id_rsa/{{ item }} dest=/var/lib/pgsql/.ssh/ mode=0600 owner=postgres group=postgres
+    with_items: ['id_rsa', 'id_rsa.pub', 'config']
+
+  - name: copy postgresql config
+    copy: src=pgmaster/{{ item }} dest=/var/lib/pgsql/11/data/ mode=0600 owner=postgres group=postgres
+    with_items: ['pg_hba.conf', 'postgresql.conf']
+
+  - name: activate firewalld
+    systemd: name=firewalld state=started
+
+  - name: allow postresql network activity
+    firewalld: service=postgresql permanent=yes immediate=yes state=enabled
+
+  - name: postgresql start
+    systemd: name=postgresql-11.service state=started
+
+  - name: create repliction user
+    command: sudo -u postgres psql -c "CREATE USER replication WITH REPLICATION PASSWORD 'otus'"
+
+  - name: create barman user
+    command: sudo -u postgres psql -c "CREATE USER barman WITH SUPERUSER PASSWORD 'otus'"
+
+  - name: create streaming_barman user
+    command: sudo -u postgres psql -c "CREATE USER streaming_barman WITH REPLICATION PASSWORD 'otus'"
+
+  - name: create backup slot
+    command: sudo -u postgres psql -c "SELECT pg_create_physical_replication_slot('standby_slot')"
+
+
+- hosts: pgslave
+  become: yes
+  tasks:
+
+  - name: install postgresql11-server
+    yum: name=postgresql11-server state=latest
+
+  - name: postgresql initdb
+    command: /usr/pgsql-11/bin/postgresql-11-setup initdb
+
+  - name: prepare place for pgdata
+    file: path="/var/lib/pgsql/11/data" state=directory mode=0700 owner=postgres group=postgres
+
+  - name: send to master pg_start_backup
+    command: psql -U postgres -h 192.168.11.20 -c "select pg_start_backup('replication-setup',true);"
+
+#  - name: send to master pg_start_backup
+#    postgresql_query:
+#      login_host: pgmaster
+#      db: postgres
+#      login_user: postgres
+#      query: select pg_start_backup('replication-setup',true)
+
+  - name: remove pgdata on slave
+    file: path="/var/lib/pgsql/11/data" state={{ item }} owner=postgres group=postgres
+    with_items: ['absent', 'directory']
+
+  - name: sync db with master
+    command: sudo -u postgres pg_basebackup -X stream -h 192.168.11.20 -D /var/lib/pgsql/11/data/ -P -U replication
+
+#  - name: send to master pg_stop_backup
+#    command: 'psql -U postgres -h 192.168.11.20 -c "select pg_stop_backup();"'
+
+#  - name: send to master pg_stop_backup
+#    postgresql_query:
+#      login_host: pgmaster
+#      db: postgres
+#      login_user: postgres
+#      query: select pg_stop_backup()
+
+  - name: copy postgresql config
+    copy: src=pgslave/postgresql.conf dest=/var/lib/pgsql/11/data/ mode=0600 owner=postgres group=postgres
+
+  - name: copy ph_hba config
+    copy: src=pgslave/pg_hba.conf dest=/var/lib/pgsql/11/data/ mode=0600 owner=postgres group=postgres
+
+  - name: copy recovery config
+    copy: src=pgslave/recovery.conf dest=/var/lib/pgsql/11/data/recovery.conf mode=0644 owner=postgres group=postgres
+
+  - name: change PGDATA permission
+    file: path=/var/lib/pgsql/11/data mode=0700
+
+  - name: postgresql start
+    systemd: name=postgresql-11.service state=started
+
+
+- hosts: barman
+  become: yes
+  tasks:
+  - name: install postgresql-client
+    yum: name=postgresql11.x86_64 state=latest
+
+  - name: install barman
+    yum: name=barman state=latest
+
+  - name: create ssh dir
+    file: path="/var/lib/barman/.ssh" state=directory owner=barman group=barman
+
+  - name: copy ssh keys
+    copy: src=barman/id_rsa/{{ item }} dest=/var/lib/barman/.ssh/ mode=0600 owner=barman group=barman
+    with_items: ['id_rsa', 'id_rsa.pub', 'authorized_keys']
+
+  - name: copy .pgpass
+    copy: src=barman/.pgpass dest=/var/lib/barman/ mode=0600 owner=barman group=barman
+
+  - name: copy barman config
+    copy: src=barman/barman.conf dest=/etc/ owner=barman group=barman
+
+  - name: copy barman-host config
+    copy: src=barman/pgmaster.conf dest=/etc/barman.d/
+
+  - name: create replica slot
+    command: "{{ item }}"
+    with_items:
+      - "barman receive-wal --create-slot pgmaster"
+      - "/usr/bin/barman backup pgmaster || echo 0"
+      - "barman switch-xlog --force --archive pgmaster"
+    ignore_errors: yes
