@@ -1,0 +1,12 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Install host: preinstall "
+  include: ../roles/tasks/preinstall/host.yml
+
+- name: "Install host: preinstall "
+  include: ../roles/tasks/redis/redis_host.yml
+
+- name: "Install redis: include task"
+  include: ../roles/tasks/redis/redis_replica.yml

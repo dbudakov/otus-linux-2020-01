@@ -1,0 +1,9 @@
+- name: "Config PostgreSQL: create gitlab user"
+  shell: |
+    su postgres -c "psql -c 'CREATE EXTENSION pg_trgm;'"
+    su postgres -c "psql -c 'create database gitlab' "
+    su postgres -c "psql -c 'create database redis' "
+
+#    su postgres -c "psql -c 'create user gitlab' "
+#    su postgres -c "psql -c 'grant all privileges on database gitlab to gitlab' "
+#    su postgres -c "psql -c ' drop database gitlab'""

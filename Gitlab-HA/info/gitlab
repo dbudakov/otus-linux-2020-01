@@ -1,0 +1,2 @@
+git_data_dirs - директива для задания пути хранения проектов
+/var/opt/gitlab/git-data/repositories - место хранения проектов поумолчанию

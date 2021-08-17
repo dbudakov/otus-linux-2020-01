@@ -1,0 +1,156 @@
+- name: "Install PG: include vars"
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Create user: create postgres"
+  user:
+    name: postgres
+    state: present
+    uid: 1111
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+
+- name: "Create user: configure .ssh"
+  file:
+    path: /home/postgres/.ssh
+    owner: postgres
+    group: postgres
+    mode: "0700"
+
+- name: "Create user: configure RSA keys"
+  file:
+    path: /home/postgres/.ssh/{{item}}
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  loop: "{{keys}}"
+
+- name: "Create user: fetch id_rsa.pub"
+  fetch:
+    src: /home/postgres/.ssh/id_rsa.pub
+    dest: ../roles/templates/keys
+
+- name: "Configure sshd: close HostKeyCHecking"
+  blockinfile:
+    path: /etc/ssh/ssh_config
+    block: StrictHostKeyChecking=no
+
+- name: "Configure sshd: enable ssh PasswordAuthentication"
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name: "Configure sshd: restart sshd"
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: "Install PostgreSQL: install repo"
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: "Install PostgreSQL: install packages"
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+- name: "Install PostgreSQL: init database"
+  shell: |
+    /usr/pgsql-11/bin/postgresql-11-setup initdb
+  ignore_errors: yes
+
+- name: "Install PostgreSQL: write postgresql.conf"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#listen_addresses"
+    replace: listen_addresses
+
+- name: "Install PostgreSQL: write postgresql.conf"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: localhost
+    replace: "*"
+
+- name: "Install PostgreSQL: started firewalld"
+  systemd:
+    name: firewalld
+    enabled: yes
+    state: started
+
+- name: "Install PostgreSQL: settings firewalld"
+  firewalld:
+    zone: public
+    port: 5432/tcp
+    permanent: yes
+    state: enabled
+
+- name: "Install PostgreSQL: reload firewall"
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: "Configure PostgreSQL: setting SELinux"
+  shell: setsebool -P httpd_can_network_connect_db 1
+
+### REPLICA
+
+- name: "Install hot-standby: configure postgresql.conf"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#wal_level = replica"
+    replace: "wal_level = hot_standby"
+  notify: restarted_pgsql
+
+- name: "Install hot-standby: configure postgresql.conf"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#max_wal_senders = 10"
+    replace: "max_wal_senders = 2"
+  notify: restarted_pgsql
+
+- name: "Install hot-standby: configure postgresql.conf"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#wal_keep_segments = 0"
+    replace: "wal_keep_segments = 32"
+  notify: restarted_pgsql
+
+- name: "Install hot-standby: set pg_hba.conf"
+  template:
+    force: yes
+    src: ../roles/templates/postgresql/pg_hba.conf
+    dest: /var/lib/pgsql/11/data/pg_hba.conf
+
+- name: "Configure PostgreSQL: start service"
+  systemd:
+    name: postgresql-11.service
+    state: restarted
+    enabled: yes
+
+- name: "Install hot-standby: create /usr/lib64/pgsql"
+  file:
+    path: /usr/lib64/pgsql
+    state: directory
+    mode: 0755
+#- name: "Create user: add id_rsa balancer"
+#  template:
+#    src: ../roles/templates/keys/balancer/home/postgres/.ssh/id_rsa.pub
+#    dest: /home/postgres/.ssh/authorized_keys
+- name: "Configure Bouncer: include task"
+  include: ../roles/tasks/pgbouncer/pgbouncer.yml
+
+- name: "Configure PostgreSQL: Sets for Gitlab"
+  include: ../roles/tasks/postgresql/for_git_postgresql.yml
+
+- name: "Configure pcs: install pcs"
+  include: ../roles/tasks/dns/dns_client.yml
+
+- name: "Configure pcs: install pcs"
+  include: ../roles/tasks/dns/dns_server.yml
+
+- name: "Configure pcs: install pcs"
+  include: ../roles/tasks/pcs/pcs_install.yml

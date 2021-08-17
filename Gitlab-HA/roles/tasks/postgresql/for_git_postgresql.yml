@@ -1,0 +1,12 @@
+- name: "Configuration PostgreSQL: create gitlab database"
+  command: "{{ item }}"
+  with_items:
+    - "psql -c 'CREATE EXTENSION pg_trgm;'"
+    - "psql -c 'create database gitlab'"
+    - "psql -c 'create database redis'"
+  #  become: true
+  #  become_method: su
+  become_user: postgres
+#    su postgres -c "psql -c 'create user gitlab' "
+#    su postgres -c "psql -c 'grant all privileges on database gitlab to gitlab' "
+#    su postgres -c "psql -c ' drop database gitlab'""

@@ -1,0 +1,43 @@
+- name: "Install Redis"
+  apt:
+    name: "redis-server"
+    state: present
+- name: "Create {{ redis_cluster_config_home }}"
+  file:
+    path: "{{ redis_cluster_config_home }}"
+    state: directory
+    owner: "redis"
+    group: "redis"
+- name: "Create {{ redis_cluster_logs_home }}"
+  file:
+    path: "{{ redis_cluster_logs_home }}"
+    state: directory
+    owner: "redis"
+    group: "redis"
+- name: "Create {{ redis_cluster_data_home }}"
+  file:
+    path: "{{ redis_cluster_data_home }}"
+    state: directory
+    owner: "redis"
+    group: "redis"
+- name: "Copy redis-cluster-master.conf to {{ redis_cluster_config_home }}"
+  template:
+    src: "templates/redis-cluster-master.conf.j2"
+    dest: "{{ redis_cluster_config_home }}/redis-cluster.conf"
+    owner: "redis"
+    group: "redis"
+    mode: 0644
+  when: "'backend-console' in inventory_hostname"
+- name: "Copy Redis replication cluster systemd unit file"
+  template:
+    src: "templates/redis-cluster-replica-systemd.j2"
+    dest: "/etc/systemd/system/redis-cluster.service"
+    owner: "root"
+    group: "root"
+    mode: 0644
+- name: "Redis relication cluster restart"
+  systemd:
+    name: "redis-cluster"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

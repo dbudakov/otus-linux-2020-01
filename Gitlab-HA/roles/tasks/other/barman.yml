@@ -1,0 +1,92 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: Adding users
+  user:
+    name: "{{ item }}"
+    state: present
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+  loop:
+    - postgres
+    - barman
+
+- name: Get file id_rsa.pub
+  fetch:
+    src: /home/postgres/.ssh/id_rsa.pub
+    dest: ../roles/templates/keys
+
+- name: Install repo PostgreSQL
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: Install epel-release
+  yum:
+    name: epel-release
+    state: present
+
+- name: Install packages
+  yum:
+    name: "{{ packages_barman }}"
+    state: present
+
+- name: Disable check known_hosts
+  shell: echo StrictHostKeyChecking=no >> /etc/ssh/ssh_config
+
+- name: Enable ssh PasswordAuthentication
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name:
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: Copy pg:id_rsa in hot-standby:authorized_keys
+  template:
+    src: ../roles/templates/keys/pg/home/postgres/.ssh/id_rsa.pub
+    dest: /home/postgres/.ssh/authorized_keys
+
+- name: Copy pg:id_rsa in hot-standby:authorized_keys
+  template:
+    src: ../roles/templates/keys/pg/home/postgres/.ssh/id_rsa.pub
+    dest: /home/barman/.ssh/authorized_keys
+
+- name: Copy barman.conf
+  template:
+    src: ../roles/templates/barman/barman.conf
+    dest: /etc/barman.conf
+    mode: 0644
+
+- name: chmod for .ssh
+  file:
+    path: /home/postgres/.ssh
+    mode: 0700
+
+- name: chmod for .ssh/authorized_keys
+  file:
+    path: /home/postgres/.ssh/authorized_keys
+    mode: 0600
+    owner: postgres
+    group: postgres
+
+- name:
+  shell: |
+    sshpass -p "postgres" scp /home/postgres/.ssh/id_rsa.pub postgres@192.168.100.101:/home/postgres/.ssh/authorized_keys
+    sshpass -p "postgres" scp /home/barman/.ssh/id_rsa.pub postgres@192.168.100.101:/home/postgres/.ssh/barman_authorized_keys
+    sshpass -p "postgres" ssh postgres@192.168.100.101 'cat /home/postgres/.ssh/barman_authorized_keys >> /home/postgres/.ssh/authorized_keys'
+    /usr/bin/barman backup pg-db-server || echo 0
+    barman switch-xlog --force --archive pg-db-server
+
+- name: Set crontab for "barman backup"
+  blockinfile:
+    path: /etc/crontab
+    block: |
+      * * * * * barman /usr/bin/barman backup pg-db-server
+      * * * * * barman /usr/bin/barman cron

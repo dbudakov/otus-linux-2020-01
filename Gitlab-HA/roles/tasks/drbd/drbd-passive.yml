@@ -1,0 +1,73 @@
+- name: "Install Gitlab: include vars"
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Install DRBD: install sshpass"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - sshpass
+    - setools
+    - setroubleshoot-server
+
+- name: "Install DRBD: Configuring firewall services"
+  firewalld:
+    port: 7788/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: "Install DRBD: setting SELinux"
+  copy:
+    src: ../roles/templates/drbd/my-drbdmeta.pp
+    dest: /home/vagrant/my-drbdmeta.pp
+
+- name: "Install DRBD: setting SELinux"
+  shell: semodule -i my-drbdmeta.pp
+
+- name: "Install DRBD: install repo"
+  yum:
+    name: https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm
+    state: present
+
+- name: "Install DRBD: update GPG-KEY repo"
+  rpm_key:
+    state: present
+    key: /etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+
+- name: "Install DRBD: install packages"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - drbd84-utils
+    - kmod-drbd84
+
+- name: "Install DRBD: insmod"
+  shell: |
+    insmod /usr/lib/modules/3.10.0-1127.el7.x86_64/extra/drbd84/drbd.ko
+  ignore_errors: yes
+
+- name: "Install DRBD: copy drbd.conf"
+  template:
+    force: yes
+    src: ../roles/templates/drbd/drbd.conf
+    dest: /etc/drbd.conf
+
+- name: "Install DRBD: copy drbd.conf"
+  template:
+    force: yes
+    src: ../roles/templates/drbd/testdata1.res
+    dest: /etc/drbd.d/testdata1.res
+
+- name: "Configure sshd: enable ssh PasswordAuthentication"
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name: "Configure sshd: restart sshd"
+  systemd:
+    name: sshd
+    state: restarted

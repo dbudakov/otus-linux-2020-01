@@ -1,0 +1,45 @@
+drbd
+https://www.learnitguide.net/2016/07/how-to-install-and-configure-drbd-on-linux.html
+
+/etc/drbd.conf
+/etc/drbd.d/global_common.conf - contains the global and common section of the drbd
+/etc/drbd.d/*.res - Each resource conf file
+
+Commands
+drbdadm - hegh level Administration tool
+drbdsetup - configures the drbd module that was loaded into the kernel
+drbdmeta - Allows to create, dump, restore and modify drbd meta data structures
+drbd-overview - shows the status of drbd cluster
+
+port number 7788
+
+
+1.download
+2.configures
+3.initialize the meta data storage on each nodes
+4.starting and enabling the drbd daemon
+5.enable the drbd primary node
+6.create and mount the filesystemc of drbd device
+7.testing the conf
+
+yum info *drbd* |grep Name
+yum install drbd84-utils kmod-drbd84 -y
+vi /etc/drbd.d/testdata1.res
+
+cat<<EOF>/etc/drbd.conf
+
+include "/etc/drbd.d/global_common.conf";
+include "/etc/drbd.d/*.res";
+EOF
+
+
+lsmod | grep -i drdb || insmod  $(find / -name drbd.ko)
+#find / -name drbd* || insmod  $(find / -name drbd.ko)
+#insmod /usr/lib/modules/3.10.0-1127.el7.x86_64/extra/drbd84/drbd.ko
+drbdadm create-md testdate.res
+systemctl enable drbd && systemctl start drbd
+drbdadm primary testdata1 || drbdadm primary testdata1 --force
+drbd-overview
+cat /proc/drbd
+mkfs.xfs /dev/drbd0
+mount /dev/drbd0 /mnt

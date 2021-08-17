@@ -1,0 +1,3 @@
+resource create DrbdFS Filesystem device="/dev/drbd0" directory="/var/www/html" fstype="ext3"
+constraint colocation add DrbdFS with DrbdDataClone INFINITY with-rsc-role=Master
+constraint order promote DrbdDataClone then start DrbdFS

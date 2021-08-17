@@ -1,0 +1,36 @@
+- name: "Install DNS: install packages "
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ntp
+    - bind
+    - bind-utils
+
+- name: "Install DNS: copy resolv.conf"
+  template:
+    force: yes
+    src: ../roles/templates/dns/resolv.conf
+    dest: /etc/resolv.conf
+    attr: +i
+
+- name: "Install DNS: start firewall services"
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: "Install DNS: Configuring firewall services"
+  firewalld:
+    service: dns
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: "Install DNS: update time"
+  shell: ntpdate -u ntp1.stratum2.ru
+
+- name: "Install DNS: restart named"
+  systemd:
+    name: named
+    state: restarted

@@ -1,0 +1,7 @@
+-при падении APP сбрасывается сессия
+-при падении DB база становиться read only
+-borg
+-barmen
+-prometius
+
+дописать перезапуск gitlab service в redis_primary

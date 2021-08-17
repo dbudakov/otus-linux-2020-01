@@ -1,0 +1,13 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.100.101     node-1
+192.168.100.102     node-2
+192.168.100.111     git-1
+192.168.100.112     git-2
+192.168.100.121     nginx-1
+192.168.100.122     nginx-2
+192.168.100.131     drbd-1
+192.168.100.132     drbd-2
+192.168.100.151     gitlab-redis-1
+192.168.100.152     gitlab-redis-2
+192.168.100.153     gitlab-redis-3

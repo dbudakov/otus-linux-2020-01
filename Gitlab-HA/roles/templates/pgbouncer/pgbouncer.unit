@@ -1,0 +1,13 @@
+[Unit]
+Description= save PostgreSQL session
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/etc/pgbouncer/pgbouncer_start.sh
+ExecStop=/etc/pgbouncer/pgbouncer_stop.sh
+SuccessExitStatus=203
+
+[Install]
+WantedBy=multi-user.target

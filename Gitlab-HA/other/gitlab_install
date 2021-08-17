@@ -1,0 +1,53 @@
+yum install epel-release -y
+
+yum install nginx curl policycoreutils postfix -y
+curl -s https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash
+yum install gitlab-ce -y
+
+/etc/gitlab/gitlab.rb
+
+# sed -i 's!http://gitlab\.example\.com!http://example\.com!' /etc/gitlab/gitlab.rb
+# sed -i 's!# nginx\['\''enable'\''\] = true!nginx\['\''enable'\''\] = false!' /etc/gitlab/gitlab.rb
+# sed -i 's!# web_server\['\''external_users'\''\] = \[\]!web_server\['\''external_users'\''\] = \[nginx\]!' /etc/gitlab/gitlab.rb
+sed -i 's!# gitlab_rails\['\''trusted_proxies'\''\] = \[\]!gitlab_rails\['\''trusted_proxies'\''\] = \[ '\''127.0.0.1'\'', '\''192.168.100.111'\'' \]!' /etc/gitlab/gitlab.rb
+# sed -i 's!# gitlab_workhorse\['\''listen_network'\''\] = "unix"!gitlab_workhorse\['\''listen_network'\''\] = "unix"!' /etc/gitlab/gitlab.rb
+# sed -i 's!# gitlab_workhorse\['\''listen_addr'\''\] = "/var/opt/gitlab/gitlab-workhorse/socket"!gitlab_workhorse\['\''listen_addr'\''\] = "/var/opt/gitlab/gitlab-workhorse/socket"!' /etc/gitlab/gitlab.rb
+ln -s /usr/sbin/sysctl /bin/sysctl
+#
+#
+#
+
+gitlab-ctl reconfigure
+
+
+cat<<EOF>
+server {
+    if ($host = website.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+    listen 80;
+    listen [::]:80;
+    server_name website.com;
+    server_tokens off;
+    root /opt/gitlab/embedded/service/gitlab-rails/public;
+}
+upstream gitlab-workhorse {
+    server unix:/var/opt/gitlab/gitlab-workhorse/socket fail_timeout=0;
+}
+    location / {
+       client_max_body_size 0;
+       gzip off;
+       proxy_read_timeout      300;
+       proxy_connect_timeout   300;
+       proxy_redirect          off;
+       proxy_http_version 1.1;
+       proxy_set_header    Host                $http_host;
+       proxy_set_header    X-Real-IP           $remote_addr;
+       #proxy_set_header    X-Forwarded-Ssl     on;
+       proxy_set_header    X-Forwarded-For     $proxy_add_x_forwarded_for;
+       proxy_set_header    X-Forwarded-Proto   $scheme;
+       proxy_pass http://gitlab-workhorse;
+  }
+}
+
+http://192.168.100.112/

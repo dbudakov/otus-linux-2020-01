@@ -1,0 +1,76 @@
+- name: include all vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Preinstall: iclude task "
+  include: ../roles/tasks/preinstall/host.yml
+
+- name: "Create user: include task"
+  include: ../roles/tasks/preinstall/user_postgres.yml
+
+- name: "Settings ssh: include task"
+  include: ../roles/tasks/preinstall/ssh.yml
+
+- name: Install repo PostgreSQL
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: Install PostgreSQL
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+#- name: "Install PostgreSQL: Create symlink"
+#  file:
+#    path: /etc/systemd/system/multi-user.target.wants/postgresql-11.service
+#    dest: /usr/lib/systemd/system/postgresql-11.service
+#    state: link
+
+- name: "Configuration Slave: authorized_keys"
+  template:
+    src: ../roles/templates/keys/pg1/home/postgres/.ssh/id_rsa.pub
+    dest: /home/postgres/.ssh/authorized_keys
+
+- name: "Configuration Slave: push authorized_keys in master"
+  command: "{{ item }}"
+  with_items:
+    - 'sshpass -p "postgres" scp /home/postgres/.ssh/id_rsa.pub postgres@192.168.100.101:/home/postgres/.ssh/authorized_keys'
+    #- 'sshpass -p "vagrant" ssh root@192.168.100.101 "systemctl restart postgresql-11.service"'
+    #- 'sshpass -p "vagrant" scp /home/postgres/.ssh/id_rsa.pub  root@192.168.100.101:/vagrant/id_rsa_pg2'
+    #- 'sshpass -p "vagrant" ssh root@192.168.100.101 "cat /vagrant/id_rsa_pg2 > /home/postgres/.ssh/authorized_keys"'
+    #- 'sshpass -p "vagrant" ssh root@192.168.100.101 "chown postgres:postgres /home/postgres/.ssh/authorized_keys"'
+    #- 'sshpass -p "vagrant" ssh root@192.168.100.101 "chmod 600 /home/postgres/.ssh/authorized_keys"'
+
+- name: "Configuration Slave: mode authorized_keys"
+  file:
+    path: /home/postgres/.ssh/authorized_keys
+    owner: postgres
+    group: postgres
+    mode: 0600
+
+- name: "Configuration Slave: Configuration mode ./pgsql"
+  file:
+    path: /usr/lib64/pgsql
+    state: directory
+    mode: 0755
+
+- name: "Install PostgreSQL: create config for slave server"
+  command: "{{ item }}"
+  with_items:
+    - "/bin/bash /vagrant/scripts/slave_pg.sh 11 /var/lib/pgsql/11/data 192.168.100.101 node-2"
+
+- name: "Configuration Slave: copy recovery.conf"
+  copy:
+    remote_src: yes
+    src: /var/lib/pgsql/11/data/conf.d/recovery.conf.pcmk
+    dest: /var/lib/pgsql/11/data/recovery.conf.pcmk
+
+- name: "Configure Bouncer: include task"
+  include: ../roles/tasks/pgbouncer/pgbouncer.yml
+
+- name: "Install Pacemaker: include task"
+  include: ../roles/tasks/pcs/pcs_install.yml
+
+- name: "Configuration Pacemaker: iclude task"
+  include: ../roles/tasks/pcs/pcs_pg.yml

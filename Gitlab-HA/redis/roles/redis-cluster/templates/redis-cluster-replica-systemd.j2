@@ -1,0 +1,31 @@
+[Unit]
+Description=Redis relication cluster node
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/redis-server {{ redis_cluster_config_home }}/redis-cluster.conf
+PIDFile={{ redis_cluster_runtime_home }}/redis-cluster.pid
+TimeoutStopSec=0
+Restart=always
+User=redis
+Group=redis
+RuntimeDirectory=redis-cluster
+
+ExecStop=/bin/kill -s TERM $MAINPID
+
+UMask=007
+PrivateTmp=yes
+LimitNOFILE=65535
+PrivateDevices=yes
+ProtectHome=yes
+ReadOnlyDirectories=/
+ReadWriteDirectories=-{{ redis_cluster_data_home }}
+ReadWriteDirectories=-{{ redis_cluster_logs_home }}
+ReadWriteDirectories=-{{ redis_cluster_runtime_home }}
+CapabilityBoundingSet=~CAP_SYS_PTRACE
+ProtectSystem=true
+ReadWriteDirectories=-{{ redis_cluster_config_home }}
+
+[Install]
+WantedBy=multi-user.target

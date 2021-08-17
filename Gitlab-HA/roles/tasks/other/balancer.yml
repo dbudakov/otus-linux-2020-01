@@ -1,0 +1,105 @@
+- name: "Preup: include vars"
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Create user: create user postgres"
+  user:
+    name: postgres
+    state: present
+    uid: 1111
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+
+- name: "Create user: attribute file RSA"
+  shell: |
+    chmod 700 /home/postgres/.ssh
+    chmod 600 /home/postgres/.ssh/id_rsa
+    chmod 600 /home/postgres/.ssh/id_rsa.pub
+#    chmod 600 /home/postgres/.ssh/known_hosts
+
+- name: "Create user: Copy RSA key"
+  fetch:
+    src: /home/postgres/.ssh/id_rsa.pub
+    dest: ../roles/templates/keys
+
+- name: "Configure sshd: close HostKeyCHecking"
+  shell: echo StrictHostKeyChecking=no >> /etc/ssh/ssh_config
+
+- name: "Configure sshd: PasswordAuthentication on"
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name: "Configure sshd: restart"
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: "Configure PostgreSQL: install repository "
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: "Configure PostgreSQL: install PostgreSQL"
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+- name: "Configure PostgreSQL: init database"
+  shell: |
+    /usr/pgsql-11/bin/postgresql-11-setup initdb
+  ignore_errors: yes
+
+- name: "Configure PostgreSQL: write postgresql.conf"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#listen_addresses"
+    replace: listen_addresses
+
+- name: "Configure PostgreSQL: write postgresql.conf"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: localhost
+    replace: "*"
+
+- name: "Configure PostgreSQL: write pg_hba.conf"
+  blockinfile:
+    path: /var/lib/pgsql/11/data/pg_hba.conf
+    block: |
+      host        all       	postgres	 192.168.100.0/24	  trust
+
+- name: "Configure PostgreSQL: setting SELinux"
+  shell: setsebool -P httpd_can_network_connect_db 1
+
+- name: "Configure firewalld: started firewalld"
+  systemd:
+    name: firewalld
+    enabled: yes
+    state: started
+
+- name: "Configure firewalld: openening port :5432"
+  firewalld:
+    zone: public
+    port: 5432/tcp
+    permanent: yes
+    state: enabled
+
+- name: "Configure firewalld: reload firewalld"
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: "Install DNS: copy resolv.conf"
+  include: ../roles/tasks/dns/dns_client.yml
+
+#- name:
+#  include: ../roles/tasks/nfs/server.yml
+
+- name: "Configure PostgreSQL: include task for pgbouncer"
+  include: ../roles/tasks/pgbouncer/pgbouncer.yml
+
+- name: "Configure NFS share: include task"
+  include: ../roles/tasks/nfs/server.yml

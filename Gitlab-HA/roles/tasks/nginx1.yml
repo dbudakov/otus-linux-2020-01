@@ -1,0 +1,59 @@
+- name: "Create user: git"
+  user:
+    name: git
+    state: present
+    uid: 995
+    home: /var/opt/gitlab
+    createhome: yes
+    shell: /bin/sh
+
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Install host: preinstall "
+  include: ../roles/tasks/preinstall/host.yml
+
+- name: "Install NGINX: install packages"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - epel-release
+    - nginx
+
+- name: "Install NGINX: copy nginx.conf"
+  template:
+    force: yes
+    src: ../roles/templates/nginx/nginx.conf
+    dest: /etc/nginx/nginx.conf
+
+- name: "Install NGINX: copy site.conf"
+  template:
+    src: ../roles/templates/nginx/site.conf
+    dest: /etc/nginx/conf.d/
+
+- name: "Install NGINX: start service"
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes
+
+- name: "Install NGINX: start firewalld"
+  systemd:
+    name: firewalld
+    state: restarted
+    enabled: yes
+
+- name: "Install NGINX: Configuring firewall services"
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+#- name: "Install DNS: copy resolv.conf"
+#  include: ../roles/tasks/dns/dns_client.yml
+
+- name: "Install Pacemaker: include task"
+  include: ../roles/tasks/pcs/pcs_install.yml

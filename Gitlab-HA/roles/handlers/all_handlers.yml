@@ -1,0 +1,21 @@
+- name: restart sshd
+  systemd:
+    name: sshd
+    state: restarted
+    enabled: true
+
+- name: restarted_pgsql
+  systemd:
+    name: postgresql-11
+    enabled: yes
+    state: restarted
+
+- name: "restart pcsd"
+  systemd:
+    name: pcsd.service
+    state: restarted
+
+- name: "restart named"
+  systemd:
+    name: named
+    state: restarted

@@ -1,0 +1,5 @@
+#- name: "Configure DNS: include client task"
+#  include: ../roles/tasks/dns/dns_client.yml
+#
+#- name: "Configure DNS: include servr task"
+#  include: ../roles/tasks/dns/dns_server.yml

@@ -1,0 +1,26 @@
+packages:
+  - postgresql11-server
+  - postgresql11-contrib
+  - sshpass
+
+packages_barman:
+  - barman
+  - postgresql11-server
+  - sshpass
+
+balancer_pgpool:
+  - pgpool.conf
+  - pool_hba.conf
+
+keys:
+  - id_rsa
+  - id_rsa.pub
+#  - authorized_keys
+
+packages_pcd:
+  - pcs
+  - pacemaker
+  - fence-agents-all
+  - resource-agents
+  - resource-agents-paf
+  - fence-agents-virsh

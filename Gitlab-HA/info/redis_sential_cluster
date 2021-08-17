@@ -1,0 +1,61 @@
+### PRIMARY and SENTIAL ###
+roles ['redis_sentinel_role', 'redis_master_role']
+redis['bind'] = '10.0.0.1'
+redis['port'] = 6379
+redis['password'] = 'redis-password-goes-here'
+redis['master_name'] = 'gitlab-redis' # must be the same in every sentinel node
+redis['master_password'] = 'redis-password-goes-here' # the same value defined in redis['password'] in the primary instance
+redis['master_ip'] = '10.0.0.1' # ip of the initial primary redis instance
+#redis['master_port'] = 6379 # port of the initial primary redis instance, uncomment to change to non default
+sentinel['bind'] = '10.0.0.1'
+# sentinel['port'] = 26379 # uncomment to change default port
+sentinel['quorum'] = 2
+# sentinel['down_after_milliseconds'] = 10000
+# sentinel['failover_timeout'] = 60000
+
+
+
+
+
+
+
+
+
+### REPLICA_1 and SENTIAL ###
+roles ['redis_sentinel_role', 'redis_replica_role']
+redis['bind'] = '10.0.0.2'
+redis['port'] = 6379
+redis['password'] = 'redis-password-goes-here'
+redis['master_password'] = 'redis-password-goes-here'
+redis['master_ip'] = '10.0.0.1' # IP of primary Redis server
+#redis['master_port'] = 6379 # Port of primary Redis server, uncomment to change to non default
+redis['master_name'] = 'gitlab-redis' # must be the same in every sentinel node
+sentinel['bind'] = '10.0.0.2'
+# sentinel['port'] = 26379 # uncomment to change default port
+sentinel['quorum'] = 2
+# sentinel['down_after_milliseconds'] = 10000
+# sentinel['failover_timeout'] = 60000
+
+### REPLICA_2 and SENTIAL ###
+roles ['redis_sentinel_role', 'redis_replica_role']
+redis['bind'] = '10.0.0.3'
+redis['port'] = 6379
+redis['password'] = 'redis-password-goes-here'
+redis['master_password'] = 'redis-password-goes-here'
+redis['master_ip'] = '10.0.0.1' # IP of primary Redis server
+#redis['master_port'] = 6379 # Port of primary Redis server, uncomment to change to non default
+redis['master_name'] = 'gitlab-redis' # must be the same in every sentinel node
+sentinel['bind'] = '10.0.0.3'
+# sentinel['port'] = 26379 # uncomment to change default port
+sentinel['quorum'] = 2
+# sentinel['down_after_milliseconds'] = 10000
+# sentinel['failover_timeout'] = 60000B
+
+### APP ###
+redis['master_name'] = 'gitlab-redis'
+redis['master_password'] = 'redis-password-goes-here'
+gitlab_rails['redis_sentinels'] = [
+  {'host' => '10.0.0.1', 'port' => 26379},
+  {'host' => '10.0.0.2', 'port' => 26379},
+  {'host' => '10.0.0.3', 'port' => 26379}
+]

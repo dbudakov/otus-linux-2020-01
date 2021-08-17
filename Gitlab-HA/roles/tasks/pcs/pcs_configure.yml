@@ -1,0 +1,10 @@
+- name: "Configure pcs: set IPaddr2"
+  command: "{{ item }}"
+  with_items:
+    - "pcs cluster auth -u hacluster -p hacluster --force node-1 node-2 node-3"
+    - "pcs cluster setup --name otuscluster node-1 node-2 node-3"
+    - "pcs cluster enable --all"
+    - "pcs cluster start --all"
+    - "pcs property set no-quorum-policy=ignore"
+    - "pcs property set stonith-enabled=false"
+    - "pcs resource create ClusterIP ocf:heartbeat:IPaddr2 ip=192.168.100.240 nic=eth1 cidr_netmask=24 op monitor interval=3s timeout=15s"

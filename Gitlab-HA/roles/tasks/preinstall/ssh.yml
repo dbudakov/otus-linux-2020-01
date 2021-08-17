@@ -1,0 +1,18 @@
+#- name: "Settings ssh: Disable check known_hosts"
+#  shell: echo StrictHostKeyChecking=no >> /etc/ssh/ssh_config
+
+- name: "Settings ssh: Disable check known_hosts"
+  blockinfile:
+    path: /etc/ssh/ssh_config
+    block: StrictHostKeyChecking=no
+
+- name: "Settings ssh: Enable ssh Password Authentication"
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name: "Settings ssh: restart service"
+  systemd:
+    name: sshd
+    state: restarted

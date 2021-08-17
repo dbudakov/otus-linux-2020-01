@@ -1,0 +1,58 @@
+yum install -y  pacemaker resource-agents resource-agents-paf pcs fence-agents-all fence-agents-virsh
+
+
+
+pcs cluster cib cluster1.xml
+
+# PGSQLD
+pcs -f cluster1.xml resource create PGSQLD ocf:heartbeat:pgsqlms \
+    bindir=/usr/pgsql-11/bin/ pgdata=/var/lib/pgsql/11/data     \
+    op start timeout=60s                                         \
+    op stop timeout=60s                                          \
+    op promote timeout=30s                                       \
+    op demote timeout=120s                                       \
+    op monitor interval=15s timeout=10s role="Master"            \
+    op monitor interval=16s timeout=10s role="Slave"             \
+    op notify timeout=60s
+
+# pgsql-ha
+pcs -f cluster1.xml resource master PGSQL-HA PGSQLD notify=true
+
+#pcs -f cluster1.xml resource create PGClusterIP ocf:heartbeat:IPaddr2 ip=192.168.100.200 cidr_netmask=24 nic=eth1 op monitor interval=10s
+
+pcs -f cluster1.xml constraint colocation add PGClusterIP with master PGSQL-HA INFINITY
+pcs -f cluster1.xml constraint order promote PGSQL-HA then start PGClusterIP symmetrical=false kind=Mandatory
+pcs -f cluster1.xml constraint order demote PGSQL-HA then stop PGClusterIP symmetrical=false kind=Mandatory
+
+pcs cluster cib-push scope=configuration cluster1.xml
+
+PGClusterIP
+
+
+cat <<EOP > /var/lib/pgsql/11/data/recovery.conf.pcmk
+standby_mode = on
+primary_conninfo = 'host=192.168.100.102 application_name=node-1'
+recovery_target_timeline = 'latest'
+EOP
+
+
+
+pcs cluster cib cluster1.xml
+pcs -f cluster1.xml resource create PGSQLD ocf:heartbeat:pgsqlms \
+    bindir=/usr/pgsql-11/bin/ pgdata=/var/lib/pgsql/11/data     \
+    op start timeout=60s                                         \
+    op stop timeout=60s                                          \
+    op promote timeout=30s                                       \
+    op demote timeout=120s                                       \
+    op monitor interval=15s timeout=10s role="Master"            \
+    op monitor interval=16s timeout=10s role="Slave"             \
+    op notify timeout=60s
+pcs -f cluster1.xml resource master PGSQL-HA PGSQLD notify=true
+pcs -f cluster1.xml constraint colocation add PGClusterIP with master PGSQL-HA INFINITY
+pcs -f cluster1.xml constraint order promote PGSQL-HA then start PGClusterIP symmetrical=false kind=Mandatory
+pcs -f cluster1.xml constraint order demote PGSQL-HA then stop PGClusterIP symmetrical=false kind=Mandatory
+pcs cluster cib-push scope=configuration cluster1.xml
+
+
+pg_hbaconf
+local    all     postgres               peer

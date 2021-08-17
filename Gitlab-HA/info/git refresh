@@ -1,0 +1,5 @@
+rm -rf /opt/gitlab
+rm -rf /var/opt/gitlab
+rm -rf /etc/gitlab
+yum remove gitlab-ee.x86_64
+rpm -i /vagrant/gitlab-ee-13.2.1-ee.0.el7.x86_64.rpm

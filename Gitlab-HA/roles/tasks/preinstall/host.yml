@@ -1,0 +1,25 @@
+- name: "Preinstall: copy /etc/hosts"
+  template:
+    force: yes
+    src: ../roles/templates/dns/hosts
+    dest: /etc/hosts
+
+- name: "Preinstall: start firewall"
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: "Preinstall:  install ntp bind bind-utils"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ntp
+    - bind
+    - bind-utils
+  ignore_errors: yes
+
+- name: "Preinstall: update time"
+  shell: ntpdate -u ntp1.stratum2.ru
+  ignore_errors: yes

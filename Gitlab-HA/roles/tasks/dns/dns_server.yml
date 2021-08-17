@@ -1,0 +1,46 @@
+- name: "Configure DNS"
+  file:
+    path: /var/named/zones/
+    state: directory
+  notify: "restart named"
+
+- name: "Configure DNS"
+  template:
+    force: yes
+    src: ../roles/templates/dns/named.conf
+    dest: /etc/named.conf
+  notify: "restart named"
+
+- name: "Configure DNS"
+  template:
+    src: ../roles/templates/dns/named.stand.su.view
+    dest: /var/named/zones/named.stand.su.view
+  notify: "restart named"
+
+- name: "Configure DNS"
+  template:
+    src: ../roles/templates/dns/named.stand.su.rev
+    dest: /var/named/zones/named.stand.su.rev
+  notify: "restart named"
+
+- name: "Install DNS: start firewall services"
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: "Install DNS: Configuring firewall services"
+  firewalld:
+    service: dns
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: "Install DNS: update time"
+  shell: ntpdate -u ntp1.stratum2.ru
+
+- name: "Install DNS: restart named"
+  systemd:
+    name: named
+    state: restarted
+    enabled: yes

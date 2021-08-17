@@ -1,0 +1,92 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: Adding users
+  user:
+    name: postgres
+    state: present
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+
+- name:
+  shell: |
+    chmod 700 /home/postgres/.ssh
+    chmod 600 /home/postgres/.ssh/id_rsa
+    chmod 600 /home/postgres/.ssh/id_rsa.pub
+#    chmod 600 /home/postgres/.ssh/known_hosts
+
+- name: Get file id_rsa.pub
+  fetch:
+    src: /home/postgres/.ssh/id_rsa.pub
+    dest: ../roles/templates/keys
+
+- name: Disable check known_hosts
+  shell: echo StrictHostKeyChecking=no >> /etc/ssh/ssh_config
+
+- name: Enable ssh PasswordAuthentication
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name:
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: Install repo PostgreSQL
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: Install PostgreSQL
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+- name: Initializing database
+  shell: |
+    /usr/pgsql-11/bin/postgresql-11-setup initdb
+    sed -i 's!#listen_addresses!listen_addresses!' /var/lib/pgsql/11/data/postgresql.conf
+    sed -i '/listen/s!localhost!\*!' /var/lib/pgsql/11/data/postgresql.conf
+  ignore_errors: yes
+
+- name: Started firewalld
+  systemd:
+    name: firewalld
+    enabled: yes
+    state: started
+
+- name: settings firewalld
+  firewalld:
+    zone: public
+    port: 5432/tcp
+    permanent: yes
+    state: enabled
+
+- name: reload firewall
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: setting SELinux
+  shell: |
+    setsebool -P httpd_can_network_connect_db 1
+
+### REPLICA
+
+- name: Configure postgresql.conf
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#wal_level = replica"
+    replace: "wal_level = hot_standby"
+  notify: restarted_pgsql
+
+- name: set pg_hba.conf
+  blockinfile:
+    path: /var/lib/pgsql/11/data/pg_hba.conf
+    block: |
+      host        all       	postgres	 192.168.100.0/24	  trust

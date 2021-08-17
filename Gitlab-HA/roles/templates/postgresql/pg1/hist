@@ -1,0 +1,23 @@
+    1  pcs status 
+    2  pcs status 
+    3  pcs status 
+    4  pcs status 
+    5  pcs cluster cib cluster1.xml
+    6  # PGSQLD
+    7  pcs -f cluster1.xml resource create PGSQLD ocf:heartbeat:pgsqlms     bindir=/usr/pgsql-11/bin/ pgdata=/var/lib/pgsql/11/data         op start timeout=60s                                             op stop timeout=60s                                              op promote timeout=30s                                           op demote timeout=120s                                           op monitor interval=15s timeout=10s role="Master"                op monitor interval=16s timeout=10s role="Slave"                 op notify timeout=60s
+    8  # pgsql-ha
+    9  pcs -f cluster1.xml resource master PGSQL-HA PGSQLD notify=true
+   10  pcs -f cluster1.xml resource create PGClusterIP ocf:heartbeat:IPaddr2 ip=192.168.100.200 cidr_netmask=24 nic=eth1 op monitor interval=10s
+   11  pcs -f cluster1.xml constraint colocation add PGClusterIP with master PGSQL-HA INFINITY
+   12  pcs -f cluster1.xml constraint order promote PGSQL-HA then start PGClusterIP symmetrical=false kind=Mandatory
+   13  pcs -f cluster1.xml constraint order demote PGSQL-HA then stop PGClusterIP symmetrical=false kind=Mandatory
+   14  pcs cluster cib-push scope=configuration cluster1.xml
+   15  pcs status
+   16  reboot 
+   17  vi /var/lib/pgsql/11/data/pg_hba.conf 
+   18  pcs status
+   19  pcs status
+   20  ip ad
+   21  vi /var/lib/pgsql/11/data/postgresql.conf 
+   22  reboot 
+   23  history >/opt/hist

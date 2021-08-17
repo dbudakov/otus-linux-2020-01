@@ -1,0 +1,45 @@
+https://redos.red-soft.ru/base/manual/admin-manual/safe-redos/kluster/
+#Настройка  Pacemaker
+yum install -y pacemaker pcs fence-agents-all
+systemctl enable pcsd.service --now
+echo 'hacluster' |passwd hacluster --stdin
+systemctl restart pcsd
+#Настройка Corosync
+
+# подготовить firewalld
+
+## аутентификация нод
+pcs cluster auth -u hacluster -p hacluster --force node-1 node-2 node-3
+## создание кластера(возможно разные кластера)
+pcs cluster setup --name otuscluster node-1 node-2 node-3
+## включаем и запускаем все кластера
+pcs cluster enable --all
+pcs cluster start --all
+
+
+# Для следующих действий могутпотребоваться
+pcs property set no-quorum-policy=ignore
+pcs property set stonith-enabled=false
+
+# Создание ресурса
+pcs resource create ClusterIP ocf:heartbeat:IPaddr2 ip=192.168.100.240 nic=eth2 cidr_netmask=24
+    ClusteIP - наименование будущего ресурса
+    ocf:heartbeat:IPaddr2 - провайдер
+    192.168.100.240 - виртуальный ip
+    eth2 - на каком интерфейса поднимать
+pcs resource create NGINX systemcd:nginx op monitor interval=15 timeout=30
+  firewall-cmd --add-service=http --permanent
+  firewall-cmd --reload
+pcs resource delete ClusterIP
+
+
+# настройка мониторинга ресурса
+pcs resource update ClusterIP ocf:heartbeat:IPaddr2 op monitor interval=5s timeout=15s
+
+# объединение ресурсов
+pcs constraint colocation add NGINX with ClusterIP
+pcs constraint order start ClusteIP then start NGINX
+
+pcs config
+
+pcs resource show ClusterIP

@@ -1,0 +1,36 @@
+- name: "Create user: Create user postgres"
+  user:
+    name: postgres
+    state: present
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+
+#- name: "Create user: chmod files"
+#  shell: |
+#    chmod 700 /home/postgres/.ssh
+#    chmod 600 /home/postgres/.ssh/id_rsa
+#    chmod 600 /home/postgres/.ssh/id_rsa.pub
+
+- name: "Create user: chmod files"
+  file:
+    path: /home/postgres/.ssh
+    mode: 0700
+    owner: postgres
+    group: postgres
+
+- name: "Create user: chmod files"
+  file:
+    path: "{{ item }}"
+    mode: 0600
+    owner: postgres
+    group: postgres
+  loop:
+    - /home/postgres/.ssh/id_rsa
+    - /home/postgres/.ssh/id_rsa.pub
+
+- name: "Create user: Get id_rsa.pub"
+  fetch:
+    src: /home/postgres/.ssh/id_rsa.pub
+    dest: ../roles/templates/keys

@@ -1,0 +1,7 @@
+- name: "Configure NFS share: add export share"
+  command: "{{ item }}"
+  with_items:
+    - 'sshpass -p "vagrant" ssh root@192.168.100.131 "chown git /mnt"'
+    - 'sshpass -p "vagrant" ssh root@192.168.100.132 "chown git /mnt"'
+    - 'sshpass -p "vagrant" ssh root@192.168.100.131 "exportfs -r"'
+    - 'sshpass -p "vagrant" ssh root@192.168.100.132 "exportfs -r"'

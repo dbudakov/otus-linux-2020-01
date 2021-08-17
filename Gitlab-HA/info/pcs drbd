@@ -1,0 +1,109 @@
+pcs drbd
+https://www.learnitguide.net/2016/07/integrate-drbd-with-pacemaker-clusters.html
+
+
+pcs cluster auth -u hacluster -p hacluster --force drbd-1 drbd-2
+pcs cluster setup --name drbdcluster drbd-1 drbd-2
+pcs cluster enable --all
+pcs cluster start --all
+pcs property set no-quorum-policy=ignore
+pcs property set stonith-enabled=false
+
+#9.
+pcs resource create drdblusterIP ocf:heartbeat:IPaddr2 ip=192.168.100.230 nic=eth1 cidr_netmask=24 op monitor interval=5s timeout=15s
+#pcs resource update drdblusterIP ocf:heartbeat:IPaddr2 op monitor interval=5s timeout=15s
+
+
+pcs resource create Httpd ocf:heartbeat:apache
+#configfile=/etc/httpd/conf/httpd.conf op monitor interval=1min
+
+pcs constraint colocation add Httpd with drdblusterIP INFINITY
+pcs constraint order drdblusterIP then Httpd
+
+#Adding drdblusterIP Httpd (kind: Mandatory) (Options: first-action=start then-action=start)
+
+pcs cluster cib drbd_cfg
+pcs -f drbd_cfg resource create DrbdData ocf:linbit:drbd drbd_resource=testdata1 op monitor interval=60s
+pcs -f drbd_cfg resource master DrbdDataClone DrbdData master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+pcs cluster cib-push drbd_cfg
+
+
+#CIB updated
+
+pcs status resources
+
+pcs cluster cib fs_cfg
+pcs  -f fs_cfg resource create DrbdFS ocf:heartbeat:Filesystem device="/dev/drbd0" directory="/mnt" fstype="xfs"
+pcs  -f fs_cfg constraint colocation add DrbdFS with DrbdDataClone INFINITY with-rsc-role=Master
+pcs  -f fs_cfg constraint order promote DrbdDataClone then start DrbdFS
+#Adding DrbdDataClone DrbdFS (kind: Mandatory) (Options: first-action=promote then-action=start)
+
+pcs -f fs_cfg constraint colocation add drdblusterIP with DrbdFS INFINITY
+pcs -f fs_cfg constraint order DrbdFS then drdblusterIP
+
+#pcs -f fs_cfg constraint colocation add Httpd with DrbdFS INFINITY
+#pcs -f fs_cfg constraint order DrbdFS then Httpd
+#Adding DrbdFS Httpd (kind: Mandatory) (Options: first-action=start then-action=start)
+
+pcs cluster cib-push fs_cfg
+#CIB Updated
+
+pcs status resources
+#drdblusterIP (ocf::heartbeat:IPaddr2):       Started node1
+#Httpd  (ocf::heartbeat:apache):        Started node1
+#Master/Slave Set: DrbdDataClone [DrbdData]
+#    Masters: [ node1 ]
+#    Slaves: [ node2 ]
+#DrbdFS (ocf::heartbeat:Filesystem):    Started node1
+
+
+pcs resource op defaults timeout=210s
+pcs resource op defaults
+timeout: 240s
+
+
+pcs cluster stop node1
+pcs status resources
+
+
+
+
+
+pcs status resources
+pcs cluster cib fs_cfg
+pcs  -f fs_cfg resource create DrbdFS ocf:heartbeat:Filesystem device="/dev/drbd0" directory="/mnt" fstype="xfs"
+pcs  -f fs_cfg constraint colocation add DrbdFS with DrbdDataClone INFINITY with-rsc-role=Master
+pcs  -f fs_cfg constraint order promote DrbdDataClone then start DrbdFS
+pcs -f fs_cfg constraint colocation add Httpd with DrbdFS INFINITY
+pcs -f fs_cfg constraint order DrbdFS then ClusterIP
+pcs cluster cib-push fs_cfg
+
+
+
+  112  firewall-cmd --permanent --add-service=http
+  113  firewall-cmd --reload
+  114  yum install -y pacemaker pcs fence-agents-all psmisc policycoreutils-python
+  115  pcs property set no-quorum-policy=ignore
+  116  pcs property set default-resource-stickiness="INFINITY"
+  117  pcs property set stonith-enabled=false
+  118  pcs resource delete DrbdFS
+  119  DrbdDataClone
+  120  pcs resource delete DrbdDataClone
+  121  pcs resource create Httpd ocf:heartbeat:apache configfile=/etc/httpd/conf/httpd.conf op monitor interval=1min
+  122  pcs resource delete drbdlusterIP
+  123  pcs resource delete drddlusterIP
+  124  pcs resource delete drdblusterIP
+  125  pcs resource create VirtIP ocf:heartbeat:IPaddr2 ip=192.168.100.230 nic=eth1 cidr_netmask=24 op monitor interval=5s timeout=15s
+  126  pcs constraint colocation add Httpd with VirtIP INFINITY
+  127  pcs constraint order VirtIP then Httpd
+  128  pcs cluster cib drbd_cfg
+  129  pcs -f drbd_cfg resource create DrbdData ocf:linbit:drbd drbd_resource=testdata1 op monitor interval=60s
+  130  pcs -f drbd_cfg resource master DrbdDataClone DrbdData master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+  131   pcs cluster cib-push drbd_cfg
+  132  pcs cluster cib fs_cfg
+  133  'pcs -f fs_cfg resource create DrbdFS ocf:heartbeat:Filesystem device="/dev/drbd0" directory="/mnt" fstype="xfs"'
+  134  pcs -f fs_cfg resource create DrbdFS ocf:heartbeat:Filesystem device="/dev/drbd0" directory="/mnt" fstype="xfs"
+  135  pcs  -f fs_cfg constraint colocation add DrbdFS with DrbdDataClone INFINITY with-rsc-role=Master
+  136  pcs cluster cib-push fs_cfg
+  137  histroty
+  138  history

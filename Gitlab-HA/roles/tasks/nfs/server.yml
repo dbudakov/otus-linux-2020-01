@@ -1,0 +1,51 @@
+- name: "Configure NFS share: start nfs.servise"
+  systemd:
+    name: nfs-server.service
+    state: started
+    enabled: yes
+
+#- name: "Configure NFS share: create dir /obmen"
+#  file:
+#    path: /obmen
+#    state: directory
+#    owner: git
+#    group: root
+#    mode: "0700"
+
+- name: "Configure NFS share: write /etc/exports"
+  blockinfile:
+    path: /etc/exports
+    block: |
+      /mnt 192.168.100.111(rw,all_squash,sync,anonuid=995)
+      /mnt 192.168.100.112(rw,all_squash,sync,anonuid=995)
+
+- name: "Configure NFS share: start firewalld"
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: "Configure NFS share: configuring firewall services"
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  with_items:
+    - nfs
+    - mountd
+    - rpc-bind
+
+- name: "Configure NFS share: Configuring firewall services"
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  with_items:
+    - 50370/udp
+    - 52169/udp
+    - 20048/udp
+    - 2049/udp
+    - 42494/udp
+    - 41310/udp

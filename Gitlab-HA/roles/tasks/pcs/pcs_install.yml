@@ -1,0 +1,46 @@
+- name: "Install Pacemaker: include vars"
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+#- meta: end_play
+#  when: (ansible_distribution != "CentOS" and ansible_distribution_major_version != "7")
+#
+
+- name: "Install Pacemaker: Configuring firewall services"
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  with_items:
+    - ssh
+    - high-availability
+
+- name: "Install Pacemaker: install packages"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages_pcd }}"
+  ignore_errors: yes
+
+- name: "Install Pacemaker: Allow cluster processes on SELinux"
+  seboolean:
+    name: daemons_enable_cluster_mode
+    state: yes
+    persistent: yes
+
+- name: "Install Pacemaker: set password hacluster"
+  user:
+    name: "hacluster"
+    password: "$1$qLrJO/Dt$7ID0GZwyQsL3DsGJl8uen/"
+    state: present
+    update_password: always
+    create_home: yes
+  no_log: true
+
+- name: "Install Pacemaker: Enable Pacemaker service"
+  systemd:
+    name: pcsd.service
+    state: restarted
+    enabled: true
+#- meta: flush_handlers

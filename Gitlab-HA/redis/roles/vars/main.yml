@@ -1,0 +1,11 @@
+---
+# vars file for roles### ROLES VARS ###
+# redis-cluster
+redis_cluster_config_home: "/etc/redis-cluster"
+redis_cluster_logs_home: "/var/log/redis-cluster"
+redis_cluster_data_home: "/var/lib/redis-cluster"
+redis_cluster_runtime_home: "/var/run/redis-cluster"
+redis_cluster_node_port: 6389
+redis_cluster_master_host: "dev.backend-console-internal.example.com"
+redis_cluster_name: "redis-{{ env }}-cluster"
+redis_cluster_sentinel_port: 26389

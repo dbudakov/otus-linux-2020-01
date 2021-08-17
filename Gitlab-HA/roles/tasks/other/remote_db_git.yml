@@ -1,0 +1,8 @@
+- name: "Configure Gitlab: set remote PostgreSQL"
+  shell: |
+    sed -i '!# postgresql\['\''ssl'\''\] = '\''on'\''!postgresql\['\''ssl'\''\] = '\''off'\''!' /etc/gitlab/gitlab.rb
+    sed -i '!# gitlab_rails\['\''db_username'\''\] = "gitlab"!gitlab_rails\['\''db_username'\''\] = "gitlab"!' /etc/gitlab/gitlab.rb
+    sed -i '!# gitlab_rails\['\''db_password'\''\] = nil!gitlab_rails\['\''db_password'\''\] = '\'''\''!' /etc/gitlab/gitlab.rb
+    sed -i '!# gitlab_rails\['\''db_host'\''\] = nil!gitlab_rails\['\''db_host'\''\] = '\''192.168.100.105'\''!' /etc/gitlab/gitlab.rb
+    sed -i '!# gitlab_rails\['\''db_port'\''\] = 5432!gitlab_rails\['\''db_port'\''\] = 6432!' /etc/gitlab/gitlab.rb
+    sed -i '!# gitlab_rails\['\''db_database'\''\] = "gitlabhq_production"!gitlab_rails\['\''db_database'\''\] = "gitlab"!' /etc/gitlab/gitlab.rb

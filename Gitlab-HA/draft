@@ -1,0 +1,30 @@
+https://winitpro.ru/index.php/2019/09/26/ustanovka-postgresql-db-centos/
+https://habr.com/ru/post/188096/ - репликация
+https://www.codeflow.site/ru/article/how-to-back-up-restore-and-migrate-postgresql-databases-with-barman-on-centos-7 - barman
+
+
+Создание и откат снапшота
+    for i in pg hot-standby balancer; do vagrant up $i;done
+    echo -n "write vm for snapshot: ";read a; vagrant snapshot push $a
+    echo -n "write vm for recovery: ";read a; vagrant snapshot pop $a --no-delete
+
+ps aux | grep postgres | grep -- -D
+sed -i 's!#listen_addresses!listen_addresses!' /var/lib/pgsql/11/data/postgresql.conf
+sed -i '/listen/s!localhost!\*!' /var/lib/pgsql/11/data/postgresql.conf
+echo "host all all 192.168.100.0/24 trust" >> /var/lib/pgsql/11/data/pg_hba.conf
+
+Коннект к pgsql:
+    psql -h 192.168.100.101 -U postgres
+
+Копирование ключа
+    sshpass -p "postgres" scp /home/postgres/.ssh/id_rsa.pub postgres@192.168.100.102:/home/postgres/.ssh/authorized_keys
+
+Проверка запуска pgsql после настройки реплики
+    ps aux | grep sender - ведущий(master)
+    ps aux | grep receiver - ведомый(slave)
+
+
+vpn использование include vars
+network использование handlers
+
+https://apt.postgresql.org/pub/projects/pgFoundry/pgpool/pgpool-II/pgpool-II3.0.3/pgpool-II-3.0.3.tar.gz

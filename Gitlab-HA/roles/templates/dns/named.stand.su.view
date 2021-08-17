@@ -1,0 +1,21 @@
+$TTL 3600
+$ORIGIN stand.su.
+@               IN      SOA     node-1.stand.su. root.stand.su. (
+                            2711201407 ; serial
+                            3600       ; refresh (1 hour)
+                            600        ; retry (10 minutes)
+                            86400      ; expire (1 day)
+                            600        ; minimum (10 minutes)
+                        )
+
+@                       NS      node-1.stand.su.
+@                       MX      10 node-1.stand.su.
+
+node-1            IN      A       192.168.100.101
+node-2            IN      A       192.168.100.102
+git-1             IN      A       192.168.100.111
+git-2             IN      A       192.168.100.112
+nginx-1           IN      A       192.168.100.121
+nginx-2           IN      A       192.168.100.122
+drbd-1            IN      A       192.168.100.131
+drbd-2            IN      A       192.168.100.132

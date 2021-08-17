@@ -1,0 +1,161 @@
+- name: "Install PG: include vars"
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Create user: create postgres"
+  user:
+    name: postgres
+    state: present
+    uid: 1111
+    password: "$1$QRAcN6FI$JG.0ytvzhHP0w.dBlh6Ol0"
+    createhome: yes
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+
+- name: "Create user: fetch id_rsa.pub"
+  fetch:
+    src: /home/postgres/.ssh/id_rsa.pub
+    dest: ../roles/templates/keys
+
+- name: "Install PostgreSQL: install repo"
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: "Install PostgreSQL: install packages"
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+- name: "Configure sshd: close HostKeyCHecking"
+  blockinfile:
+    path: /etc/ssh/ssh_config
+    block: StrictHostKeyChecking=no
+
+- name: "Configure sshd: enable ssh PasswordAuthentication"
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: "#PasswordAuthentication yes"
+    replace: "PasswordAuthentication yes"
+
+- name: "Configure sshd: restart sshd"
+  systemd:
+    name: sshd
+    state: restarted
+
+- name: Copy pg:id_rsa in hot-standby:authorized_keys
+  template:
+    src: ../roles/templates/keys/pg1/home/postgres/.ssh/id_rsa.pub
+    dest: /home/postgres/.ssh/authorized_keys
+
+- name: "Create user: configure .ssh"
+  file:
+    path: /home/postgres/.ssh
+    owner: postgres
+    group: postgres
+    mode: "0700"
+
+- name: "Create user: configure RSA keys"
+  file:
+    path: /home/postgres/.ssh/{{item}}
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  loop: "{{keys}}"
+
+- name: "Install PostgreSQL: set authorized_keys on pg1"
+  shell: |
+    sshpass -p "postgres" scp /home/postgres/.ssh/id_rsa.pub postgres@192.168.100.101:/home/postgres/.ssh/authorized_keys
+
+- name: "Install PostgreSQL: Create data for standby"
+  shell: |
+    sshpass -p "postgres" ssh postgres@192.168.100.101 "psql -c \"SELECT pg_start_backup('stream');"\";
+    sshpass -p "postgres" ssh postgres@192.168.100.101 "rsync -a /var/lib/pgsql/11/data/ 192.168.100.102:/var/lib/pgsql/11/data/ --exclude postmaster.pid";
+    sshpass -p "postgres" ssh postgres@192.168.100.101 "psql -c \"SELECT pg_stop_backup();"\";
+
+- name: "Install PostgreSQL: hot_standby on"
+  replace:
+    path: /var/lib/pgsql/11/data/postgresql.conf
+    regexp: "#hot_standby = on"
+    replace: "hot_standby = on"
+
+- name: "Install PostgreSQL: Change file ownership, group and permissions"
+  file:
+    path: /var/lib/pgsql/11/data/recovery.conf
+    owner: postgres
+    group: postgres
+    mode: "0644"
+    state: touch
+
+- name: "Install PostgreSQL: set recovery.conf"
+  blockinfile:
+    path: /var/lib/pgsql/11/data/recovery.conf
+    block: |
+      standby_mode = 'on'
+      primary_conninfo = 'host=192.168.100.101 port=5432 user=postgres'
+      trigger_file = 'failover'
+
+- name: "Install PostgreSQL: started firewalld"
+  systemd:
+    name: firewalld
+    enabled: yes
+    state: started
+
+- name: "Install PostgreSQL: settings firewalld"
+  firewalld:
+    zone: public
+    port: 5432/tcp
+    permanent: yes
+    state: enabled
+
+- name: "Install PostgreSQL: reload firewall"
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: "Configure PostgreSQL: setting SELinux"
+  shell: setsebool -P httpd_can_network_connect_db 1
+
+- name: "Install PostgreSQL: started pgsql"
+  systemd:
+    name: postgresql-11
+    enabled: yes
+    state: started
+
+- name: "Install PostgreSQL: create /usr/lib64/pgsql"
+  file:
+    path: /usr/lib64/pgsql
+    state: directory
+    mode: 0755
+#- name: Configure postgresql.conf for barman
+#  shell: |
+#    sshpass -p "postgres" ssh postgres@192.168.100.101 "cat<<EOF >> /var/lib/pgsql/11/data/postgresql.conf
+#    archive_mode = on
+#    archive_command = 'rsync -a %p barman@192.168.100.104:/var/lib/barman/pg-db-server/incoming/%f'
+#    EOF"
+#    sshpass -p "vagrant" ssh root@192.168.100.101 "systemctl restart postgresql-11.service"
+
+##- name: Configure postgresql.conf for barman
+##  replace:
+##    path: /var/lib/pgsql/11/data/postgresql.conf
+##    regexp: "#archive_mode = off"
+##    replace: "archive_mode = on"
+##  notify: restarted_pgsql
+
+##- name: Configure postgresql.conf for barman
+##  replace:
+##    path: /var/lib/pgsql/11/data/postgresql.conf
+##    regexp: "#archive_command = ''"
+##    replace: "archive_command = 'rsync -a %p barman@192.168.100.104:/%f'"
+##  notify: restarted_pgsql
+- name: "Install DNS: copy resolv.conf"
+  include: ../roles/tasks/dns/dns_client.yml
+
+- name: "Configure Bouncer: include task"
+  include: ../roles/tasks/pgbouncer/pgbouncer.yml
+
+- name: "Install pcs: install pcs"
+  include: ../roles/tasks/pcs/pcs_install.yml
+
+- name: "Create cluster pcs: install pcs"
+  include: ../roles/tasks/pcs/pcs_pg.yml

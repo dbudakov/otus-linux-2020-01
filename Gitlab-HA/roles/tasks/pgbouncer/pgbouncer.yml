@@ -1,0 +1,70 @@
+- name: "Inslall Bouncer: install packages"
+  yum:
+    name: pgbouncer.x86_64
+    state: present
+
+- name: "Inslall Bouncer: configure pgbouncer.ini"
+  template:
+    force: yes
+    src: ../roles/templates/pgbouncer/pgbouncer.ini
+    dest: /etc/pgbouncer/pgbouncer.ini
+
+- name: "Inslall Bouncer: create userlist.txt"
+  file:
+    path: /etc/pgbouncer/userlist.txt
+    state: touch
+
+- name: "Inslall Bouncer: add user in userlist.txt"
+  template:
+    src: ../roles/templates/pgbouncer/userlist.txt
+    dest: /etc/pgbouncer/userlist.txt
+
+- name: "Install Gitlab: Start firewall services"
+  systemd:
+    name: firewalld
+    state: started
+
+- name: "Inslall Bouncer: Configuring firewall services"
+  firewalld:
+    port: 6432/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: "Inslall Bouncer: copy unit_file"
+  template:
+    src: ../roles/templates/pgbouncer/pgbouncer.unit
+    dest: /usr/lib/systemd/system/pgbouncer.service
+
+- name: "Inslall Bouncer: copy start script"
+  template:
+    src: ../roles/templates/pgbouncer/pgbouncer_start.sh
+    dest: /etc/pgbouncer/pgbouncer_start.sh
+
+- name: "Inslall Bouncer: copy stop script"
+  template:
+    src: ../roles/templates/pgbouncer/pgbouncer_stop.sh
+    dest: /etc/pgbouncer/pgbouncer_stop.sh
+
+- name: "Inslall Bouncer: mode directory"
+  file:
+    path: "{{item}}"
+    owner: postgres
+    group: postgres
+    mode: 700
+  loop:
+    - /etc/pgbouncer/pgbouncer_stop.sh
+    - /etc/pgbouncer/pgbouncer_start.sh
+
+- name: "Inslall Bouncer: start service"
+  systemd:
+    name: pgbouncer
+    state: started
+    enabled: yes
+# - name: "Configure pgbouncer: start pgbouncer"
+#   shell: |
+#     chown postgres:postgres /var/log/pgbouncer -R
+#     chown postgres:postgres /var/run/pgbouncer -R
+#     su postgres -c "pkill pgbouncer"
+#     su postgres -c "pgbouncer  -d --verbose /etc/pgbouncer/pgbouncer.ini"
+#

@@ -1,0 +1,25 @@
+- name: !!
+  command:
+    - "rpm -i /vagrant/redis-6.0.6-1.el7.remi.x86_64.rpm"
+
+- name: "Install Gitlab: Configuring firewall services"
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  with_items:
+    - 6379/tcp
+    - 6379/udp
+
+- name: !!
+  shell: |
+    cat<<EOF>>/var/opt/gitlab/redis/redis.conf
+    requirepass TestPass
+    EOF
+
+#- name:
+#  systemd:
+#    name: gitlab
+#    state: restarted
+#    enabled: yes

@@ -1,0 +1,24 @@
+$TTL 3600
+$ORIGIN 100.168.192.in-addr.arpa.
+100.168.192.in-addr.arpa.  IN      SOA    node-1.stand.su. root.stand.su. (
+                            2711201407 ; serial
+                            3600       ; refresh (1 hour)
+                            600        ; retry (10 minutes)
+                            86400      ; expire (1 day)
+                            600        ; minimum (10 minutes)
+                        )
+
+@                IN      NS      node-1.stand.su.
+@                IN      MX      10 node-1.stand.su.
+
+; DNS Servers
+101              IN      PTR     node-1.stand.su.
+102              IN      PTR     node-2.stand.su.
+103              IN      PTR     node-3.stand.su.
+105              IN      PTR     balancer-1.stand.su.
+111              IN      PTR     git-1.stand.su.
+112              IN      PTR     git-2.stand.su.
+121              IN      PTR     nginx-1.stand.su.
+122              IN      PTR     nginx-2.stand.su.
+131              IN      PTR     drbd-1.stand.su.
+132              IN      PTR     drbd-2.stand.su.

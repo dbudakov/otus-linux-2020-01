@@ -1,0 +1,34 @@
+#- name: include vars
+#  include_vars:
+#    file: ../roles/vars/all_vars.yml
+#
+#- name: "Install host: preinstall "
+#  include: ../roles/tasks/preinstall/host.yml
+#
+#- name: "Create user: git"
+#  user:
+#    name: git
+#    state: present
+#    uid: 995
+#    home: /var/opt/gitlab
+#    createhome: yes
+#    shell: /bin/sh
+#
+#- name: "Preup include vars"
+#  include_vars:
+#    file: ../roles/vars/all_vars.yml
+#
+#- name: "Install Pacemaker: include task"
+#  include: ../roles/tasks/pcs/pcs_install.yml
+#
+#- name: "Install DRBD : include task"
+#  include: ../roles/tasks/drbd/drbd-active.yml
+
+- name: "Install Pacemaker : include task"
+  include: ../roles/tasks/pcs/pcs_drbd.yml
+
+- name: "Install NFS: include task"
+  include: ../roles/tasks/nfs/server.yml
+
+- name: "Install NFS: include task"
+  include: ../roles/tasks/nfs/server_active.yml

@@ -1,0 +1,25 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Install host: preinstall "
+  include: ../roles/tasks/preinstall/host.yml
+
+- name:
+  yum:
+    name: policycoreutils-python
+    state: present
+
+- name:
+  command: "{{ item }}"
+  with_items:
+    - "rpm -i /vagrant/gitlab-ce-13.2.0-ce.0.el7.x86_64.rpm"
+
+- name:
+  template:
+    src: ../roles/templates/gitlab/{{ inventory_hostname }}.rb
+    dest: /etc/gitlab/gitlab.rb
+- name:
+  command: "{{ item }}"
+  with_items:
+    - "gitlab-ctl reconfigure"

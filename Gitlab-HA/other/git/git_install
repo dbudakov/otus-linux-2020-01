@@ -1,0 +1,63 @@
+yum install wget -y
+yum install epel-release -y
+#yum install http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+wget -O /etc/pki/rpm-gpg/RPM-GPG-KEY-remi http://rpms.famillecollet.com/RPM-GPG-KEY-remi
+rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-remi
+yum install http://rpms.remirepo.net/enterprise/remi-release-7.rpm -y
+
+yum -y update
+yum -y groupinstall 'Development Tools'
+yum -y install readline readline-devel ncurses-devel gdbm-devel glibc-devel tcl-devel openssl-devel curl-devel expat-devel db4-devel byacc sqlite-devel libyaml libyaml-devel libffi libffi-devel libxml2 libxml2-devel libxslt libxslt-devel libicu libicu-devel system-config-firewall-tui redis sudo wget crontabs logwatch logrotate perl-Time-HiRes git cmake libcom_err-devel.i686 libcom_err-devel.x86_64 nodejs
+yum -y install python-docutils
+
+# postfix
+yum -y install postfix
+
+# vim
+yum -y install vim-enhanced
+ln -s /usr/bin/vim /usr/bin/editor
+#rm -i /usr/bin/editor
+
+# git source
+yum -y remove git
+yum install zlib-devel perl-CPAN gettext curl-devel expat-devel gettext-devel openssl-devel -y
+mkdir /tmp/git && cd /tmp/git
+curl --progress-bar https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.27.0.tar.gz | tar xz
+cd git-2.27.0
+./configure
+make -j4
+make -j4  prefix=/usr/local install
+
+adduser --system --shell /bin/bash --comment 'GitLab' --create-home --home-dir /home/git/ git
+
+sed -i 's/Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin:/Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin/' /etc/sudoers.tmp
+yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+yum install -y postgresql11-server  postgresql11-contrib
+
+/usr/pgsql-11/bin/postgresql-11-setup initdb
+
+start postgresql-11.service 
+enable postgresql-11.service
+
+su postgres -c "psql -c 'CREATE USER git CREATEDB;'"
+su postgres -c "psql -c 'CREATE DATABASE gitlabhq_production OWNER git;'"
+su postgres -c "psql -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'"
+
+sudo -u git psql -d gitlabhq_production
+
+su git -c "psql -d gitlabhq_production -c 'SELECT true AS enabled
+FROM pg_available_extensions
+WHERE name = 'pg_trgm'
+AND installed_version IS NOT NULL;'"
+
+host    all             all             127.0.0.1/32            trust
+
+
+cd /home/git
+sudo -u git -H git clone https://gitlab.com/gitlab-org/gitlab-ce.git -b 8-9-stable gitlab
+cd /home/git/gitlab
+
+
+
+

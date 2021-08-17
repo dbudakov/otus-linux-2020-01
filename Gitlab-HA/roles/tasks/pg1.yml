@@ -1,0 +1,117 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Preinstall: include task"
+  include: ../roles/tasks/preinstall/host.yml
+
+- name: "Create user: include task"
+  include: ../roles/tasks/preinstall/user_postgres.yml
+
+- name: "Settings ssh: include task"
+  include: ../roles/tasks/preinstall/ssh.yml
+
+- name: "Install PostgreSQL: install repo"
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: "Install PostgreSQL: install packages"
+  yum:
+    name: "{{ packages }}"
+    state: present
+
+#- name: "Install PostgreSQL: Create symlink"
+#  file:
+#    path: /etc/systemd/system/multi-user.target.wants/postgresql-11.service
+#    dest: /usr/lib/systemd/system/postgresql-11.service
+#    state: link
+
+- name: "Install PostgreSQL: initializing database"
+  command: "{{ item }}"
+  with_items:
+    - "/usr/pgsql-11/bin/postgresql-11-setup initdb"
+  ignore_errors: yes
+
+- name: "Install PostgreSQL: settings firewalld"
+  firewalld:
+    zone: public
+    port: 5432/tcp
+    permanent: yes
+    state: enabled
+
+- name: "Install PostgreSQL: reload firewall"
+  systemd:
+    name: firewalld
+    state: reloaded
+
+#- name: "Install PostgreSQL: settings SELinux"
+#  shell: |
+#    setsebool -P httpd_can_network_connect_db 1
+
+- name: "Install PostgreSQL: Allow connect db on SELinux"
+  seboolean:
+    name: httpd_can_network_connect_db
+    state: yes
+    persistent: yes
+
+### FOR REPLICA
+- name: "Configuration Slave: mkdir conf.d"
+  file:
+    path: /var/lib/pgsql/11/data/conf.d/
+    state: directory
+
+- name: "Configuration Slave: copy postgresql.conf"
+  template:
+    src: ../roles/templates/postgresql/pg1/postgresql.conf
+    dest: /var/lib/pgsql/11/data/postgresql.conf
+    force: yes
+
+- name: "Configuration Slave: copy pg_hba"
+  template:
+    src: ../roles/templates/postgresql/pg1/pg_hba.conf
+    dest: /var/lib/pgsql/11/data/pg_hba.conf
+    force: yes
+
+- name: "Configuration Slave: copy ./conf.d/custom.conf"
+  template:
+    src: ../roles/templates/postgresql/pg1/custom.conf
+    dest: /var/lib/pgsql/11/data/conf.d/custom.conf
+
+- name: "Configuration Slave: copy recovery.conf"
+  template:
+    src: ../roles/templates/postgresql/pg1/recovery.conf.pcmk
+    dest: /var/lib/pgsql/11/data/recovery.conf.pcmk
+
+- name: "Configuration Slave: restart PostgreSQL"
+  systemd:
+    name: postgresql-11
+    state: restarted
+    enabled: yes
+
+- name: "Configuration mode ./pgsql"
+  file:
+    path: /usr/lib64/pgsql
+    state: directory
+    mode: 0755
+
+- name: "Configuration Slave: create config for primary server"
+  command: "{{ item }}"
+  with_items:
+    - "/bin/bash /vagrant/scripts/primary_pg.sh 11 /var/lib/pgsql/11/data 192.168.100.101 node-1"
+
+- name: "Configuration Slave: copy recovery.conf in active place"
+  copy:
+    remote_src: yes
+    src: /var/lib/pgsql/11/data/conf.d/recovery.conf.pcmk
+    dest: /var/lib/pgsql/11/data/recovery.conf.pcmk
+
+## ADDITIONAL TASKS
+- name: "Configuration PostgreSQL: Create database for Gitlab"
+  include: ../roles/tasks/postgresql/for_git_postgresql.yml
+
+- name: "Inslall Bouncer: include task"
+  include: ../roles/tasks/pgbouncer/pgbouncer.yml
+
+- name: "Install Pacemaker: include task"
+  include: ../roles/tasks/pcs/pcs_install.yml

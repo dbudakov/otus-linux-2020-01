@@ -1,0 +1,86 @@
+- name: include vars
+  include_vars:
+    file: ../roles/vars/all_vars.yml
+
+- name: "Install host: preinstall "
+  include: ../roles/tasks/preinstall/host.yml
+
+- name: "Install Giltab: create user git"
+  user:
+    name: git
+    state: present
+    uid: 995
+    home: /var/opt/gitlab
+    createhome: yes
+    shell: /bin/sh
+
+- name: "Install Giltab: install other packages"
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - epel-release
+    - setools
+    - setroubleshoot-server
+    - curl
+    - policycoreutils-python
+    - policycoreutils
+    - postfix
+
+- name: "Install Giltab: Allow connect httpd processes on SELinux"
+  seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+
+#- name: "Configure NFS share: include task"
+#  include: ../roles/tasks/nfs/client.yml
+
+- name: "Install Giltab: install packages Gitlab"
+  command: "{{ item }}"
+  with_items:
+    - "curl -s https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash"
+    - "yum install -y gitlab-ce-13.2.0-ce.0.el7.x86_64.rpm"
+    #- "rpm -i /vagrant/gitlab-ce-13.2.0-ce.0.el7.x86_64.rpm"
+  ignore_errors: yes
+
+- name: "Install Gitlab: copy gitlab.rb"
+  template:
+    force: yes
+    src: ../roles/templates/gitlab/gitlab_2.rb
+    dest: /etc/gitlab/gitlab.rb
+- name: "Install DNS: copy hosts"
+  template:
+    force: yes
+    src: ../roles/templates/dns/hosts
+    dest: /etc/hosts
+
+- name: "Install PostgreSQL: include task"
+  include: ../roles/tasks/postgresql/other_postgresql.yml
+
+- name: "Install Gitlab: Start firewall services"
+  systemd:
+    name: firewalld
+    state: started
+
+- name: "Install Gitlab: Configuring firewall services"
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  with_items:
+    - http
+
+#- name: "Install Giltab: reconfigure and start Gitlab "
+#  shell: |
+#    gitlab-ctl reconfigure
+
+#- name: "Install redis: include task"
+#  include: ../roles/tasks/redis/redis_replica.yml
+
+- name: "Install Pacemaker: include task"
+  include: ../roles/tasks/pcs/pcs_install.yml
+
+- name: "Create cluster: include task"
+  include: ../roles/tasks/pcs/pcs_git.yml
