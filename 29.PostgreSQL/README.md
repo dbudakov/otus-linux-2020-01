@@ -10,7 +10,7 @@ PostgreSQL
 
 ## Решение
 
-Проверка репликации
+## Проверка репликации
 
 ```sh
 # primary
@@ -21,8 +21,11 @@ su postgres -c 'psql -c "select \* from pg_stat_replication;"'
 ps aux | grep receiver
 ```
 
-Создание бэкапа
+## Создание бэкапа
+
+```sh
 barman backup pg-db-server
+```
 
 Создание бэкапа для проверки настроено на каждую минуту
 
@@ -66,11 +69,11 @@ barman list-files pg-db-server $(barman list-backup pg-db-server|awk 'NR == 1 {p
 barman switch-xlog --force --archive pg-db-server
 ```
    
-Дополнительно:  
+## Дополнительно:  
 [Многоярусный бэкап PostgreSQL с помощью Barman и синхронного переноса журналов транзакций](https://m.habr.com/ru/company/yamoney/blog/333844/)  
 <https://www.pgpool.net/docs/latest/en/html/example-cluster.html>  
 
-### DEBUG 
+## DEBUG 
 
 1. ошибка в строке при выводе `barman check [master]`, директории следующих выводов должны совпадать  
 `WAL archive: FAILED (please make sure WAL shipping is setup)`
