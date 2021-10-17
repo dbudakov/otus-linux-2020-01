@@ -80,8 +80,8 @@ sudo reboot
 uname -r  
 ```
 #### Настройка VirtualBox Shared Folders
-заносим в переменную UUID виртуальной машины, добавляем cd-rom, монтируем сопутствующий VBoxGuestAdditions.iso
-поднимаем VM монтируем cd-rom, запускаем установку, после установки, через консоль необходимо добавить локальной каталог для чтобы использовать на VM, при назначении использовать "Auto-mount"
+Определяем UUID виртуальной машины, добавляем cd-rom, монтируем VBoxGuestAdditions.iso  
+Запускаем установку, далее через консоль необходимо добавить локальный каталог чтобы использовать на VM, при назначении использовать "Auto-mount"  
 ```
 vmname=$(awk -F\' '/^  :/ {print $2}' ./Vagrantfile)
 UUID=$(VBoxManage list vms|awk '/'$vmname'/{print $2}')
@@ -91,7 +91,7 @@ VBoxManage storageattach $UUID --storagectl SATA --port 1 --device 0 --type dvdd
 $(sudo find / -name *VBoxGuestAdditions* 2>/dev/null|grep VirtualBox|head -1)
 VBoxManage startvm $UUID --type headless
 ```
-теперь нужно доставить обновить и доставить нужные пакеты для установки доп.пакетов чтобы настроить shared folders, также после обновления ядро слетить на старое, нужно забиндить на новое:   
+теперь нужно доставить нужные пакеты для shared folders, также нужно забиндить ядро на новое:   
 ```
 vagrant ssh
 sudo su -
@@ -101,7 +101,7 @@ sudo grub2-mkconfig -o /boot/grub2/grub.cfg
 sudo grub2-set-default 0  
 sudo reboot  
 ```
-Далее установка, после которой, добавленные хостовые каталоги, с опцией автомонтирования, станут доступны: 
+Далее установка, добавленные каталоги, с опцией автомонтирования, станут доступны: 
 ```
 vagrant ssh
 sudo su -
