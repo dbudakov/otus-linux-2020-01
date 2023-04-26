@@ -1,0 +1,11 @@
+- name: local env
+  hosts: all
+  tasks:
+    - debug:
+        msg: "{{ lookup('env','HOME') }}"
+
+- name: remove env
+  hosts: all
+  tasks:
+    - debug:
+        msg: "{{ ansible_env.HOME }}"
