@@ -1,3 +1,3 @@
 ```bash
-ansible-playbook -i inv.yaml getEnv.yaml 
+ansible-playbook -i inventory.yaml getEnv.yaml 
 ```
