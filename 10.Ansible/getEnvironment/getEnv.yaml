@@ -4,7 +4,7 @@
     - debug:
         msg: "{{ lookup('env','HOME') }}"
 
-- name: remove env
+- name: remote env
   hosts: all
   tasks:
     - debug:
